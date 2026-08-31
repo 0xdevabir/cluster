@@ -1,0 +1,10 @@
+# TODO(phase-02): real fields owned by Phase 02 (Facility, Power & Thermal Design).
+# This is a stub example so `task validate` passes on an examples-only repo.
+apiVersion: nexus.io/v1
+kind: Rack
+metadata:
+  name: r01
+spec:
+  site: hq
+  room: dc1
+  units: 42

@@ -1,0 +1,7 @@
+# Pre-existing design documents predate the Phase 00 lint gate and are out of
+# this phase's scope to reformat (phases/README.md Rule 2 — stay inside the
+# phase boundary). Bring these into compliance in a dedicated docs pass if
+# desired; do not let it block `task validate`.
+ARCHITECTURE.md
+ULTIMATE-PLAN.md
+phases/*.md

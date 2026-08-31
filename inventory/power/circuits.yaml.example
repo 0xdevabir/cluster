@@ -1,0 +1,8 @@
+# TODO(phase-02): real fields owned by Phase 02 (Facility, Power & Thermal Design).
+apiVersion: nexus.io/v1
+kind: Circuit
+metadata:
+  name: r01-circuit-a
+spec:
+  amps: 30
+  phase: 3

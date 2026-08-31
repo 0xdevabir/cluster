@@ -1,0 +1,8 @@
+# TODO(phase-02): real fields owned by Phase 02 (Facility, Power & Thermal Design).
+apiVersion: nexus.io/v1
+kind: PduMap
+metadata:
+  name: r01-pdu-a
+spec:
+  rack: r01
+  outlets: 24

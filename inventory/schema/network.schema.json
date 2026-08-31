@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/network.json",
+  "title": "NEXUS Network (STUB — TODO(phase-03))",
+  "description": "Stub schema so validation does not block Phase 00. Phase 03 (Network Fabric Design) owns the real fields per ARCHITECTURE.md#l2--network-fabric.",
+  "type": "object",
+  "required": ["apiVersion", "kind"],
+  "additionalProperties": true,
+  "properties": {
+    "apiVersion": { "const": "nexus.io/v1" },
+    "kind": { "type": "string" }
+  }
+}

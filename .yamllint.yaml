@@ -1,0 +1,13 @@
+extends: default
+rules:
+  line-length: { max: 160, level: warning }
+  comments: { min-spaces-from-content: 1 }
+  document-start: disable
+  truthy: { allowed-values: ['true', 'false', 'on', 'off'], check-keys: false }
+  indentation: { spaces: 2, indent-sequences: consistent }
+  braces: { max-spaces-inside: 1 }
+  brackets: { max-spaces-inside: 1 }
+ignore: |
+  talos/rendered/
+  charts/**/templates/
+  .task/

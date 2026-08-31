@@ -1,0 +1,11 @@
+# TODO(phase-03): real fields owned by Phase 03 (Network Fabric Design).
+apiVersion: nexus.io/v1
+kind: VlanPlan
+metadata:
+  name: hq-dc1
+spec:
+  vlans:
+    - { id: 100, name: mgmt }
+    - { id: 200, name: k8s }
+    - { id: 300, name: storage }
+    - { id: 400, name: rdma }

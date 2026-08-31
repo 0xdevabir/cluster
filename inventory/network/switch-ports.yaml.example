@@ -1,0 +1,7 @@
+# TODO(phase-03): real fields owned by Phase 03 (Network Fabric Design).
+apiVersion: nexus.io/v1
+kind: SwitchPortMap
+metadata:
+  name: r01-leaf-a
+spec:
+  ports: []

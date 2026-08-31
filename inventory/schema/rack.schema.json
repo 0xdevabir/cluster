@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/rack.json",
+  "title": "NEXUS Rack (STUB — TODO(phase-02))",
+  "description": "Stub schema so validation does not block Phase 00. Phase 02 (Facility, Power & Thermal Design) owns the real fields per ARCHITECTURE.md#l0--facility-layer.",
+  "type": "object",
+  "required": ["apiVersion", "kind"],
+  "additionalProperties": true,
+  "properties": {
+    "apiVersion": { "const": "nexus.io/v1" },
+    "kind": { "const": "Rack" }
+  }
+}

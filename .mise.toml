@@ -1,0 +1,29 @@
+# .mise.toml — the single source of truth for tool versions.
+# Install everything:  mise install
+# Verify:              task tools:verify
+[tools]
+task                              = "3.40.0"
+yq                               = "4.44.3"
+jq                               = "1.7.1"
+kubectl                          = "1.34.1"
+helm                             = "3.16.2"
+kustomize                        = "5.5.0"
+sops                             = "3.9.1"
+age                              = "1.2.0"
+"aqua:siderolabs/talos"          = "1.9.5"     # talosctl
+"aqua:argoproj/argo-cd"          = "2.13.2"
+"aqua:cilium/cilium-cli"         = "0.16.20"
+"aqua:yannh/kubeconform"         = "0.6.7"
+"aqua:kyverno/kyverno"           = "1.13.1"
+"aqua:hadolint/hadolint"         = "2.12.0"
+"aqua:aquasecurity/trivy"        = "0.57.0"
+"aqua:sigstore/cosign"           = "2.4.1"
+python                           = "3.12"
+pre-commit                       = "4.0.1"
+"pipx:check-jsonschema"          = "0.29.4"
+
+[env]
+NEXUS_CLUSTER   = "nexus-prod"
+NEXUS_ROOT      = "{{config_root}}"
+KUBECONFIG      = "{{config_root}}/.secrets/kubeconfig"
+TALOSCONFIG     = "{{config_root}}/.secrets/talosconfig"

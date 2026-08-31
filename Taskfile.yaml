@@ -1,0 +1,85 @@
+version: '3'
+
+vars:
+  ROOT:
+    sh: git rev-parse --show-toplevel
+  CLUSTER: '{{.NEXUS_CLUSTER | default "nexus-prod"}}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds: [task --list]
+
+  # ─────────────────────────── validation ───────────────────────────
+  validate:
+    desc: Run every validation gate (this is what CI runs)
+    deps: [validate:inventory, validate:yaml, validate:markdown, validate:shell, validate:manifests]
+
+  validate:inventory:
+    desc: Validate all inventory YAML against JSON Schema
+    cmds:
+      - bash tools/validate-inventory.sh
+
+  validate:yaml:
+    desc: Lint all YAML
+    cmds:
+      - yamllint -c .yamllint.yaml .
+
+  validate:markdown:
+    desc: Lint all Markdown (pre-existing design docs are out of Phase 00's scope — see .markdownlintignore)
+    cmds:
+      - markdownlint-cli2 --config .markdownlint.yaml "**/*.md" "!ARCHITECTURE.md" "!ULTIMATE-PLAN.md" "!phases/**"
+
+  validate:shell:
+    desc: Lint all shell scripts (info-level notes, e.g. SC1091 on sourcing lib/common.sh, are expected — see phases/PHASE-00.md Troubleshooting)
+    cmds:
+      - find tools benchmarks chaos -name '*.sh' -print0 | xargs -0 -r shellcheck -x -S warning
+
+  validate:manifests:
+    desc: Validate Kubernetes manifests against the API schema
+    cmds:
+      - |
+        if [ -d clusters ] && find clusters -name '*.yaml' -type f | grep -q .; then
+          find clusters -name '*.yaml' -type f -print0 \
+            | xargs -0 kubeconform -strict -summary -ignore-missing-schemas \
+                -kubernetes-version 1.34.1 \
+                -schema-location default \
+                -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{`{{.Group}}`}}/{{`{{.ResourceKind}}`}}_{{`{{.ResourceAPIVersion}}`}}.json'
+        else
+          echo "no manifests yet — skipping"
+        fi
+
+  # ─────────────────────────── tooling ───────────────────────────
+  tools:verify:
+    desc: Assert every pinned tool is installed at the pinned version
+    cmds:
+      - bash tools/verify-tools.sh
+
+  # ─────────────────────────── evidence ───────────────────────────
+  evidence:new:
+    desc: 'Scaffold evidence for a phase: task evidence:new -- 07'
+    cmds:
+      - bash tools/new-phase-evidence.sh {{.CLI_ARGS}}
+
+  evidence:check:
+    desc: Assert every completed phase has complete evidence
+    cmds:
+      - bash tools/check-evidence.sh
+
+  # ─────────────────────────── inventory ───────────────────────────
+  inventory:table:
+    desc: Render a human-readable node table from inventory/
+    cmds:
+      - bash tools/render-node-table.sh
+
+  inventory:stats:
+    desc: Aggregate fleet totals (cores, VRAM, storage, power)
+    cmds:
+      - bash tools/inventory-stats.sh
+
+  # ─────────────── namespaces reserved for later phases ───────────────
+  # talos:*      (phase 09)    cluster:*   (phase 12)
+  # gitops:*     (phase 15)    gpu:*       (phase 18)
+  # net:*        (phase 21)    storage:*   (phase 24)
+  # sched:*      (phase 30)    bench:*     (phase 48)
+  # chaos:*      (phase 54)

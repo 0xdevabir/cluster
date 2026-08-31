@@ -1,0 +1,7 @@
+# TODO(phase-03): real fields owned by Phase 03 (Network Fabric Design).
+apiVersion: nexus.io/v1
+kind: IpPlan
+metadata:
+  name: hq-dc1
+spec:
+  cidr: 10.200.0.0/16

@@ -1,0 +1,41 @@
+name: validate
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with: { version: 2024.11.8 }
+      - name: Install tools
+        run: mise install
+      - name: Verify pinned versions
+        run: task tools:verify
+      - name: Validate inventory
+        run: task validate:inventory
+      - name: Lint YAML
+        run: task validate:yaml
+      - name: Lint Markdown
+        run: task validate:markdown
+      - name: Lint shell
+        run: task validate:shell
+      - name: Validate Kubernetes manifests
+        run: task validate:manifests
+      - name: Check evidence completeness
+        run: task evidence:check
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Scan for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

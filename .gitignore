@@ -1,0 +1,32 @@
+# Secrets — NEVER commit these
+*.key
+*.pem
+!**/ca.pem
+*.decrypted.*
+*-secret.yaml
+!*-secret.enc.yaml
+.env
+.env.*
+!.env.example
+age.key
+talosconfig
+kubeconfig
+*.kubeconfig
+
+# Rendered artifacts (regenerate, never edit)
+talos/rendered/*
+!talos/rendered/.gitkeep
+
+# Tooling
+.task/
+.venv/
+__pycache__/
+node_modules/
+*.log
+*.tmp
+.DS_Store
+
+# Large benchmark payloads — commit summaries, not raw traces
+benchmarks/reports/**/*.nsys-rep
+benchmarks/reports/**/*.qdrep
+benchmarks/reports/**/raw/

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/nodespec.json",
+  "title": "NEXUS NodeSpec",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "nexus.io/v1" },
+    "kind": { "const": "NodeSpec" },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^nx-[cusmi]-r[0-9]{2}-[0-9]{2}$",
+          "description": "nx-<archetype letter>-<rack>-<slot>; see ARCHITECTURE.md#x3"
+        },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["archetype", "location", "cpu", "memory", "nics", "storage", "firmware"],
+      "additionalProperties": false,
+      "properties": {
+        "archetype": { "enum": ["control", "compute-gpu", "compute-cpu", "storage", "infra"] },
+        "status":    { "enum": ["planned", "racked", "provisioning", "active", "quarantine", "failed", "retired"], "default": "planned" },
+        "location": {
+          "type": "object",
+          "required": ["site", "rack", "u", "pdu"],
+          "additionalProperties": false,
+          "properties": {
+            "site": { "type": "string" },
+            "room": { "type": "string" },
+            "rack": { "type": "string", "pattern": "^r[0-9]{2}$" },
+            "u":    { "type": "integer", "minimum": 1, "maximum": 48 },
+            "pdu":  { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^r[0-9]{2}-pdu-[ab]:[0-9]{1,2}$" } }
+          }
+        },
+        "cpu": {
+          "type": "object",
+          "required": ["model", "sockets", "cores", "threads", "numaNodes"],
+          "additionalProperties": false,
+          "properties": {
+            "model":     { "type": "string" },
+            "sockets":   { "type": "integer", "minimum": 1 },
+            "cores":     { "type": "integer", "minimum": 1 },
+            "threads":   { "type": "integer", "minimum": 1 },
+            "numaNodes": { "type": "integer", "minimum": 1 },
+            "l3CacheMB": { "type": "integer" },
+            "ccxCount":  { "type": "integer" },
+            "baseClockGHz": { "type": "number" },
+            "tdpWatts":  { "type": "integer" }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "required": ["totalGB", "ecc"],
+          "additionalProperties": false,
+          "properties": {
+            "totalGB":  { "type": "integer", "minimum": 8 },
+            "type":     { "type": "string" },
+            "ecc":      { "type": "boolean" },
+            "channels": { "type": "integer" },
+            "speedMTs": { "type": "integer" }
+          }
+        },
+        "gpus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["index", "model", "vramGB", "pcieBusId", "pcieGen", "pcieWidth", "numaAffinity", "tdpWatts"],
+            "additionalProperties": false,
+            "properties": {
+              "index":             { "type": "integer", "minimum": 0 },
+              "model":             { "type": "string" },
+              "uuid":              { "type": "string" },
+              "vramGB":            { "type": "integer", "minimum": 1 },
+              "computeCapability": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+              "pcieBusId":         { "type": "string", "pattern": "^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\\.[0-9]$" },
+              "pcieGen":           { "type": "integer", "minimum": 1, "maximum": 6 },
+              "pcieWidth":         { "enum": ["x1", "x2", "x4", "x8", "x16"] },
+              "numaAffinity":      { "type": "integer", "minimum": -1 },
+              "nvlink":            { "type": "boolean", "default": false },
+              "p2pCapable":        { "type": "boolean", "default": false },
+              "gpudirectRdma":     { "type": "boolean", "default": false },
+              "migCapable":        { "type": "boolean", "default": false },
+              "eccSupported":      { "type": "boolean", "default": false },
+              "tdpWatts":          { "type": "integer" },
+              "powerCapWatts":     { "type": "integer" }
+            }
+          }
+        },
+        "nics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "speedGbps", "macAddress", "role"],
+            "additionalProperties": false,
+            "properties": {
+              "name":       { "type": "string" },
+              "model":      { "type": "string" },
+              "macAddress": { "type": "string", "pattern": "^([0-9a-f]{2}:){5}[0-9a-f]{2}$" },
+              "speedGbps":  { "type": "integer", "enum": [1, 2, 10, 25, 40, 50, 100, 200, 400] },
+              "role":       { "enum": ["management", "cluster", "storage", "rdma", "unused"] },
+              "pcieBusId":  { "type": "string" },
+              "pcieWidth":  { "enum": ["x1", "x2", "x4", "x8", "x16"] },
+              "numaAffinity": { "type": "integer", "minimum": -1 },
+              "rdma": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "capable":  { "type": "boolean" },
+                  "protocol": { "enum": ["RoCEv1", "RoCEv2", "InfiniBand", "iWARP"] },
+                  "device":   { "type": "string", "pattern": "^mlx[0-9]_[0-9]+$" }
+                }
+              },
+              "sriov": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "capable":        { "type": "boolean" },
+                  "maxVfs":         { "type": "integer" },
+                  "configuredVfs":  { "type": "integer" }
+                }
+              },
+              "switchPort": { "type": "string", "pattern": "^r[0-9]{2}-(leaf|mgmt)-[ab]:[a-zA-Z0-9/]+$" }
+            }
+          }
+        },
+        "storage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["device", "sizeGB", "class", "plp", "role", "tier"],
+            "additionalProperties": false,
+            "properties": {
+              "device": { "type": "string", "pattern": "^/dev/(nvme[0-9]+n[0-9]+|sd[a-z]+)$" },
+              "model":  { "type": "string" },
+              "serial": { "type": "string" },
+              "sizeGB": { "type": "integer", "minimum": 1 },
+              "class":  { "enum": ["consumer-nvme", "enterprise-nvme", "consumer-sata-ssd", "enterprise-sata-ssd", "hdd"] },
+              "plp":    { "type": "boolean" },
+              "role":   { "enum": ["boot", "scratch", "osd-data", "osd-waldb", "mayastor", "etcd", "unused"] },
+              "tier":   { "type": "integer", "minimum": 0, "maximum": 4 },
+              "dwpd":   { "type": "number" }
+            }
+          }
+        },
+        "firmware": {
+          "type": "object",
+          "required": ["bios", "iommu", "wol"],
+          "additionalProperties": false,
+          "properties": {
+            "bios":          { "type": "string" },
+            "agesa":         { "type": "string" },
+            "me":            { "type": "string" },
+            "secureBoot":    { "type": "boolean" },
+            "iommu":         { "type": "boolean" },
+            "resizableBar":  { "type": "boolean" },
+            "above4gDecode": { "type": "boolean" },
+            "wol":           { "type": "boolean" },
+            "vpro":          { "type": "boolean", "default": false },
+            "pxeFirst":      { "type": "boolean" }
+          }
+        },
+        "power": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "psuWatts":       { "type": "integer" },
+            "measuredIdleW":  { "type": "integer" },
+            "measuredPeakW":  { "type": "integer" },
+            "budgetWatts":    { "type": "integer" }
+          }
+        },
+        "benchmarks": { "type": "object", "additionalProperties": { "type": "number" } },
+        "notes": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "archetype": { "const": "compute-gpu" } } },
+          "then": { "required": ["gpus"], "properties": { "gpus": { "minItems": 1 } } }
+        },
+        {
+          "if":   { "properties": { "archetype": { "const": "control" } } },
+          "then": { "properties": { "memory": { "properties": { "ecc": { "const": true } } } } }
+        }
+      ]
+    }
+  }
+}

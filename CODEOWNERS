@@ -1,0 +1,7 @@
+# Protect the highest-blast-radius paths.
+# See CONTRIBUTING.md for the review process.
+
+/inventory/        @0xdevabir
+/talos/             @0xdevabir
+/policies/          @0xdevabir
+/ARCHITECTURE.md    @0xdevabir
