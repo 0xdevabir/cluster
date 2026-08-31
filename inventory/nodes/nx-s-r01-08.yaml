@@ -1,0 +1,111 @@
+apiVersion: nexus.io/v1
+kind: NodeSpec
+metadata:
+  name: nx-s-r01-08
+  labels:
+    pool: storage
+spec:
+  archetype: storage
+  status: planned
+  location: { site: hq, room: dc1, rack: r01, u: 8, pdu: [r01-pdu-a:8, r01-pdu-b:8] }
+  cpu:
+    model: "Intel Xeon E-2488"
+    sockets: 1
+    cores: 8
+    threads: 16
+    numaNodes: 1
+    baseClockGHz: 3.2
+    tdpWatts: 95
+  memory:
+    totalGB: 128
+    type: DDR5-4800
+    ecc: true
+    channels: 2
+    speedMTs: 4800
+  nics:
+    - name: enp1s0f0
+      model: "Mellanox ConnectX-6 EN"
+      macAddress: "aa:00:03:00:00:01"
+      speedGbps: 25
+      role: storage
+      numaAffinity: 0
+      rdma: { capable: true, protocol: RoCEv2, device: mlx5_0 }
+      switchPort: "r01-leaf-a:eth5"
+    - name: eno1
+      macAddress: "aa:00:03:00:00:02"
+      speedGbps: 1
+      role: management
+      numaAffinity: 0
+      rdma: { capable: false }
+  storage:
+    - device: /dev/nvme0n1
+      model: "Samsung 990 PRO"
+      sizeGB: 512
+      class: consumer-nvme
+      plp: false
+      role: boot
+      tier: 0
+    - device: /dev/nvme1n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-data
+      tier: 2
+      dwpd: 1.0
+    - device: /dev/nvme2n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-data
+      tier: 2
+      dwpd: 1.0
+    - device: /dev/nvme3n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-data
+      tier: 2
+      dwpd: 1.0
+    - device: /dev/nvme4n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-data
+      tier: 2
+      dwpd: 1.0
+    - device: /dev/nvme5n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-data
+      tier: 2
+      dwpd: 1.0
+    - device: /dev/nvme6n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: osd-waldb
+      tier: 2
+      dwpd: 1.0
+  firmware:
+    bios: "2.4.0"
+    secureBoot: false
+    iommu: true
+    resizableBar: true
+    above4gDecode: true
+    wol: true
+    vpro: true
+    pxeFirst: true
+  power:
+    psuWatts: 850
+    budgetWatts: 500
+  notes: >-
+    Planned — M1 pilot storage node (spec-sheet values, single failure
+    domain at M1). Not yet racked; re-run discover-node.sh once hardware
+    arrives (Phase 01 Task 3).

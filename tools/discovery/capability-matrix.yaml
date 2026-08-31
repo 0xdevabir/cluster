@@ -1,0 +1,95 @@
+# Capability flags that CANNOT be reliably auto-detected and must be looked up.
+# Sources: NVIDIA product briefs, driver release notes, CUDA docs (as of 2026-08-31).
+# ⚠️ Verify each entry against the actual hardware in Phase 01 Task 4 where a runtime probe
+# exists (p2pBandwidthLatencyTest, nvidia-smi topo -m, nvidia_peermem). Any mismatch between
+# this table and a probe is a finding for evidence/phase-01/deviations.md.
+gpus:
+  "NVIDIA GeForce RTX 3090":
+    vramGB: 24
+    computeCapability: "8.6"
+    tdpWatts: 350
+    nvlink: true          # 2-way NVLink bridge available
+    p2pCapable: true       # over NVLink; PCIe P2P also works on Ampere GeForce
+    gpudirectRdma: false   # not officially supported on GeForce
+    migCapable: false
+    eccSupported: false
+    fp8: false
+
+  "NVIDIA GeForce RTX 4090":
+    vramGB: 24
+    computeCapability: "8.9"
+    tdpWatts: 450
+    nvlink: false          # removed on Ada
+    p2pCapable: false      # ⚠️ disabled in driver; community patch exists (Phase 18)
+    gpudirectRdma: false
+    migCapable: false
+    eccSupported: false
+    fp8: true
+
+  "NVIDIA GeForce RTX 5090":
+    vramGB: 32
+    computeCapability: "12.0"
+    tdpWatts: 575
+    nvlink: false
+    p2pCapable: false
+    gpudirectRdma: false
+    migCapable: false
+    eccSupported: false
+    fp8: true
+    fp4: true
+
+  "NVIDIA RTX 6000 Ada Generation":
+    vramGB: 48
+    computeCapability: "8.9"
+    tdpWatts: 300
+    nvlink: false
+    p2pCapable: true
+    gpudirectRdma: true
+    migCapable: false
+    eccSupported: true
+    fp8: true
+
+  "NVIDIA RTX PRO 6000 Blackwell":
+    vramGB: 96
+    computeCapability: "12.0"
+    tdpWatts: 600
+    nvlink: false
+    p2pCapable: true
+    gpudirectRdma: true
+    migCapable: false
+    eccSupported: true
+    fp8: true
+    fp4: true
+
+  "NVIDIA A100-SXM4-80GB":
+    vramGB: 80
+    computeCapability: "8.0"
+    tdpWatts: 400
+    nvlink: true
+    p2pCapable: true
+    gpudirectRdma: true
+    migCapable: true
+    eccSupported: true
+    fp8: false
+
+  "NVIDIA H100 PCIe":
+    vramGB: 80
+    computeCapability: "9.0"
+    tdpWatts: 350
+    nvlink: true
+    p2pCapable: true
+    gpudirectRdma: true
+    migCapable: true
+    eccSupported: true
+    fp8: true
+
+# Fallback rule for unknown models — conservative, must be corrected by hand.
+# DANGER: an incorrectly optimistic `gpudirectRdma: true` produces an NCCL configuration
+# that silently falls back to TCP; you spend Phase 22 hunting a 10x performance mystery.
+default:
+  nvlink: false
+  p2pCapable: false
+  gpudirectRdma: false
+  migCapable: false
+  eccSupported: false
+  _requiresManualReview: true

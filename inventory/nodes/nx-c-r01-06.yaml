@@ -1,0 +1,92 @@
+apiVersion: nexus.io/v1
+kind: NodeSpec
+metadata:
+  name: nx-c-r01-06
+  labels:
+    pool: training
+spec:
+  archetype: compute-gpu
+  status: planned
+  location: { site: hq, room: dc1, rack: r01, u: 6, pdu: [r01-pdu-a:6, r01-pdu-b:6] }
+  cpu:
+    model: "AMD Ryzen 9 7950X"
+    sockets: 1
+    cores: 16
+    threads: 32
+    numaNodes: 1
+    l3CacheMB: 64
+    ccxCount: 2
+    baseClockGHz: 4.5
+    tdpWatts: 170
+  memory:
+    totalGB: 128
+    type: DDR5-5600
+    ecc: false
+    channels: 2
+    speedMTs: 5600
+  gpus:
+    - index: 0
+      model: "NVIDIA GeForce RTX 4090"
+      vramGB: 24
+      computeCapability: "8.9"
+      pcieBusId: "0000:01:00.0"
+      pcieGen: 4
+      pcieWidth: x16
+      numaAffinity: 0
+      nvlink: false
+      p2pCapable: false
+      gpudirectRdma: false
+      migCapable: false
+      eccSupported: false
+      tdpWatts: 450
+      powerCapWatts: 400
+  nics:
+    - name: enp2s0f0np0
+      model: "Mellanox ConnectX-6 EN"
+      macAddress: "aa:00:02:00:00:05"
+      speedGbps: 100
+      role: cluster
+      pcieBusId: "0000:02:00.0"
+      pcieWidth: x8
+      numaAffinity: 0
+      rdma: { capable: true, protocol: RoCEv2, device: mlx5_0 }
+      sriov: { capable: true, maxVfs: 8, configuredVfs: 0 }
+      switchPort: "r01-leaf-a:eth3"
+    - name: eno1
+      macAddress: "aa:00:02:00:00:06"
+      speedGbps: 1
+      role: management
+      numaAffinity: 0
+      rdma: { capable: false }
+  storage:
+    - device: /dev/nvme0n1
+      model: "Samsung 990 PRO"
+      sizeGB: 2000
+      class: consumer-nvme
+      plp: false
+      role: scratch
+      tier: 0
+    - device: /dev/nvme1n1
+      model: "WD Black SN850X"
+      sizeGB: 256
+      class: consumer-nvme
+      plp: false
+      role: boot
+      tier: 0
+  firmware:
+    bios: "3.10"
+    agesa: "1.2.0.2"
+    secureBoot: false
+    iommu: true
+    resizableBar: true
+    above4gDecode: true
+    wol: true
+    vpro: false
+    pxeFirst: true
+  power:
+    psuWatts: 1000
+    budgetWatts: 750
+  notes: >-
+    Planned — M1 pilot compute-gpu node (spec-sheet values, pool=training).
+    Not yet racked; re-run discover-node.sh once hardware arrives (Task 3).
+    GPU EULA review pending — see evidence/phase-01/legal-review.md.

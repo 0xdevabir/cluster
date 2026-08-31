@@ -1,0 +1,67 @@
+apiVersion: nexus.io/v1
+kind: NodeSpec
+metadata:
+  name: nx-m-r01-02
+  labels:
+    pool: control
+spec:
+  archetype: control
+  status: planned
+  location: { site: hq, room: dc1, rack: r01, u: 2, pdu: [r01-pdu-a:2, r01-pdu-b:2] }
+  cpu:
+    model: "Intel Xeon E-2488"
+    sockets: 1
+    cores: 8
+    threads: 16
+    numaNodes: 1
+    baseClockGHz: 3.2
+    tdpWatts: 95
+  memory:
+    totalGB: 64
+    type: DDR5-4800
+    ecc: true
+    channels: 2
+    speedMTs: 4800
+  nics:
+    - name: enp1s0
+      model: "Mellanox ConnectX-6 Lx"
+      macAddress: "aa:00:01:00:00:03"
+      speedGbps: 25
+      role: cluster
+      numaAffinity: 0
+      rdma: { capable: true, protocol: RoCEv2, device: mlx5_0 }
+    - name: eno1
+      macAddress: "aa:00:01:00:00:04"
+      speedGbps: 1
+      role: management
+      numaAffinity: 0
+      rdma: { capable: false }
+  storage:
+    - device: /dev/nvme0n1
+      model: "Samsung PM9A3"
+      sizeGB: 1600
+      class: enterprise-nvme
+      plp: true
+      role: etcd
+      tier: 1
+      dwpd: 1.0
+    - device: /dev/nvme1n1
+      model: "Samsung 990 PRO"
+      sizeGB: 512
+      class: consumer-nvme
+      plp: false
+      role: boot
+      tier: 0
+  firmware:
+    bios: "2.4.0"
+    secureBoot: false
+    iommu: true
+    resizableBar: true
+    above4gDecode: true
+    wol: true
+    vpro: true
+    pxeFirst: true
+  power:
+    psuWatts: 550
+    budgetWatts: 300
+  notes: "Planned — M1 pilot control node (spec-sheet values). Not yet racked; re-run discover-node.sh when hardware arrives (Phase 01 Task 3)."

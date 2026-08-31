@@ -1,0 +1,60 @@
+# Disk model → class/PLP/DWPD lookup.
+# Rule of thumb: if the datasheet does not explicitly say "power loss protection", "PLP",
+# or list a capacitor bank, plp is false. Consumer NVMe is NEVER assumed to have PLP.
+# Unknown model → fall back to `default` (plp: false) and flag `_requiresManualReview`.
+disks:
+  "Samsung 990 PRO":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+  "Samsung 990 PRO 2TB":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+  "WD Black SN850X":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+  "Seagate FireCuda 530":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+  "Corsair MP600":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+  "Crucial T700":
+    class: consumer-nvme
+    plp: false
+    dwpd: 0.3
+
+  "Samsung PM9A3":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+  "Intel D7-P5520":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+  "Solidigm D7-P5520":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+  "Kingston DC1500M":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+  "Micron 7450 PRO":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+  "Kioxia CD8":
+    class: enterprise-nvme
+    plp: true
+    dwpd: 1.0
+
+# Fallback rule for unlisted models — conservative, must be corrected by hand.
+default:
+  class: consumer-nvme
+  plp: false
+  _requiresManualReview: true
