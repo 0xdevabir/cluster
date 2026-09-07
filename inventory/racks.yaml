@@ -1,0 +1,29 @@
+apiVersion: nexus.io/v1
+kind: RackMap
+racks:
+  - name: r01
+    site: hq
+    room: dc1
+    units: 42
+    status: active
+    thermalZone: zone-a
+    coldAisleTempC: { min: 18, max: 24 }
+    floorLoadRatingKg: null # TODO(phase-02/A16): confirm with facility survey / electrician sign-off
+    clearanceFrontM: 1.2
+    clearanceRearM: 1.2
+    # Zero-U and top-of-rack infrastructure, per ARCHITECTURE.md#L0.1.
+    switches:
+      - { name: r01-leaf-a, role: leaf, u: 41, powerW: 150 }
+      - { name: r01-leaf-b, role: leaf, u: 39, powerW: 150 }
+      - { name: r01-mgmt, role: mgmt, u: 38, powerW: 50 }
+    kvm:
+      - { name: r01-pikvm, u: 37, powerW: 15 }
+      - { name: r01-kvm-matrix, u: 37, powerW: 15 }
+    circuits: [r01-circuit-a, r01-circuit-b]
+    pdus: [r01-pdu-a, r01-pdu-b]
+    notes: >-
+      M1 pilot rack — 8 nodes populated (3 control, 4 compute-gpu, 1 storage), U1-U8.
+      U9-U36 reserved for M2+ growth toward the ARCHITECTURE.md#L0.1 target of 12
+      compute-gpu nodes per rack. Racks r02-r08 are NOT yet created here — they are
+      a facility scaling projection in docs/facility/load-study.md, not physical
+      inventory, per the same no-fabrication rule Phase 01 applied to node records.

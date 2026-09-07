@@ -1,0 +1,21 @@
+apiVersion: nexus.io/v1
+kind: CircuitMap
+circuits:
+  - name: r01-circuit-a
+    rack: r01
+    feeds: [r01-pdu-a]
+    voltage: 208
+    phases: 3
+    breakerAmps: 30
+    receptacle: "IEC 60309 3P+N+E, 30A" # confirm exact receptacle with electrician (A16)
+    continuousLoadAmps: 5.6 # snapshot from tools/power-budget.py --write; live-recomputed by --check
+    status: designed # designed | quoted | installed | energized
+  - name: r01-circuit-b
+    rack: r01
+    feeds: [r01-pdu-b]
+    voltage: 208
+    phases: 3
+    breakerAmps: 30
+    receptacle: "IEC 60309 3P+N+E, 30A"
+    continuousLoadAmps: 5.6
+    status: designed

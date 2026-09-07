@@ -26,6 +26,7 @@ validate_dir() {
 validate_dir "inventory/nodes"   "nodespec.schema.json"
 validate_dir "inventory/network" "network.schema.json"
 validate_dir "inventory/power"   "power.schema.json"
+validate_dir "inventory"         "rack.schema.json"
 
 # Cross-document integrity checks — schema cannot express these
 log ""; log "── cross-document checks ──"
@@ -54,5 +55,17 @@ while IFS= read -r -d '' f; do
   n=$(yq -r '[.spec.storage[] | select(.role=="boot")] | length' "$f")
   [[ "$n" == "1" ]] || { warn "$(basename "$f"): expected exactly 1 boot device, found $n"; fail=1; }
 done < <(find "$ROOT/inventory/nodes" -name '*.yaml' -print0 2>/dev/null)
+
+# C6: Phase 02 power-budget checks — circuit derate (A2/A3), rack/U placement (A7),
+# and PDU outlet coverage (A10). Kept in tools/power-budget.py (not duplicated here)
+# because it needs the Task 1 wattage model, not just schema/uniqueness checks.
+if [[ -f "$ROOT/tools/power-budget.py" ]]; then
+  pb_fail=0
+  python3 "$ROOT/tools/power-budget.py" --check >/dev/null 2>&1 || { warn "power-budget.py --check FAILED (A2)"; pb_fail=1; }
+  python3 "$ROOT/tools/power-budget.py" --headroom >/dev/null 2>&1 || { warn "power-budget.py --headroom FAILED (A3)"; pb_fail=1; }
+  python3 "$ROOT/tools/power-budget.py" --check-locations >/dev/null 2>&1 || { warn "power-budget.py --check-locations FAILED (A7)"; pb_fail=1; }
+  python3 "$ROOT/tools/power-budget.py" --check-pdu-coverage >/dev/null 2>&1 || { warn "power-budget.py --check-pdu-coverage FAILED (A10)"; pb_fail=1; }
+  [[ $pb_fail -eq 0 ]] && ok "power budget checks (A2/A3/A7/A10)" || fail=1
+fi
 
 [[ $fail -eq 0 ]] && ok "inventory valid" || die "inventory validation FAILED"

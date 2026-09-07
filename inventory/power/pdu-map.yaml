@@ -1,0 +1,67 @@
+apiVersion: nexus.io/v1
+kind: PduMap
+# Model selection rationale: docs/facility/power-control-design.md.
+# Primary candidate: Raritan PX3 series (switched + metered, per-outlet, 3-phase
+# 208V/30A input, SNMPv3 + REST/JSON API, outlet power-on sequencing, DX2/DPX2
+# environmental sensor ports). Confirm exact SKU/outlet count during the
+# three-quote process (Task 7, R-14) — Vertiv Geist rPDU and APC Rack PDU 2G
+# meet the same selection criteria and are acceptable alternates.
+#
+# All M1 nodes ship with a single consumer ATX PSU (see inventory/nodes/*.yaml
+# spec.power — one psuWatts value each), so they are NOT dual-corded like
+# enterprise gear. Each node's live cord plugs into whichever PDU is its
+# `primary` feed below; the same-numbered outlet on the other PDU is a
+# reserved `failover` slot for a manual cord-swap per the Task 5 escalation
+# ladder, not a simultaneous second feed. Primary feeds are assigned
+# alternately A/B per node so steady-state load (and A2/A3 continuous-load
+# math in tools/power-budget.py) splits ~evenly across both circuits — see
+# docs/facility/power-control-design.md "Single-PSU load balancing".
+pdus:
+  - name: r01-pdu-a
+    rack: r01
+    model: "Raritan PX3 series (switched+metered, 3-phase 208V/30A) — SKU TBD at quote"
+    mgmtIp: 10.100.1.11 # management VLAN 100 only — NEVER routable from tenants (ARCHITECTURE.md#X1.1)
+    phases: 3
+    breakerAmps: 30
+    api: { type: snmpv3, credentialRef: "vault://nexus/pdu/r01-pdu-a" }
+    outlets:
+      - { id: 1, node: nx-m-r01-01, feed: primary }
+      - { id: 2, node: nx-m-r01-02, feed: failover }
+      - { id: 3, node: nx-m-r01-03, feed: primary }
+      - { id: 4, node: nx-c-r01-04, feed: failover }
+      - { id: 5, node: nx-c-r01-05, feed: primary }
+      - { id: 6, node: nx-c-r01-06, feed: failover }
+      - { id: 7, node: nx-c-r01-07, feed: primary }
+      - { id: 8, node: nx-s-r01-08, feed: failover }
+      - { id: 9, node: null, reserved: spare } # U9-U36 growth toward 12-node compute density
+      - { id: 10, node: null, reserved: spare }
+      - { id: 11, node: null, reserved: spare }
+      - { id: 12, node: null, reserved: spare }
+      - { id: 37, node: r01-pikvm, feed: primary }
+      - { id: 38, node: r01-mgmt, feed: primary }
+      - { id: 39, node: r01-leaf-b, feed: failover } # switch pair split across A/B for its own redundancy
+      - { id: 41, node: r01-leaf-a, feed: primary }
+  - name: r01-pdu-b
+    rack: r01
+    model: "Raritan PX3 series (switched+metered, 3-phase 208V/30A) — SKU TBD at quote"
+    mgmtIp: 10.100.1.12
+    phases: 3
+    breakerAmps: 30
+    api: { type: snmpv3, credentialRef: "vault://nexus/pdu/r01-pdu-b" }
+    outlets:
+      - { id: 1, node: nx-m-r01-01, feed: failover }
+      - { id: 2, node: nx-m-r01-02, feed: primary }
+      - { id: 3, node: nx-m-r01-03, feed: failover }
+      - { id: 4, node: nx-c-r01-04, feed: primary }
+      - { id: 5, node: nx-c-r01-05, feed: failover }
+      - { id: 6, node: nx-c-r01-06, feed: primary }
+      - { id: 7, node: nx-c-r01-07, feed: failover }
+      - { id: 8, node: nx-s-r01-08, feed: primary }
+      - { id: 9, node: null, reserved: spare }
+      - { id: 10, node: null, reserved: spare }
+      - { id: 11, node: null, reserved: spare }
+      - { id: 12, node: null, reserved: spare }
+      - { id: 37, node: r01-kvm-matrix, feed: primary }
+      - { id: 38, node: r01-mgmt, feed: failover }
+      - { id: 39, node: r01-leaf-b, feed: primary }
+      - { id: 41, node: r01-leaf-a, feed: failover }

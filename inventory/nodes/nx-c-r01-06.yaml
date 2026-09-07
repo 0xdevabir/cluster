@@ -39,7 +39,7 @@ spec:
       migCapable: false
       eccSupported: false
       tdpWatts: 450
-      powerCapWatts: 400
+      powerCapWatts: 320 # Phase 02 Task 4 — efficiency knee (~92% throughput, 1.29x perf/W); see docs/facility/load-study.md
   nics:
     - name: enp2s0f0np0
       model: "Mellanox ConnectX-6 EN"
