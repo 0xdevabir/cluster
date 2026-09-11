@@ -3,7 +3,9 @@
 ### How to build Project NEXUS, one bounded work order at a time
 
 > **You are an implementation agent.** This file is your operating manual. Read it once, fully, before opening any `PHASE-XX.md`.
-> Companion documents: `../ULTIMATE-PLAN.md` (why) · `../ARCHITECTURE.md` (how the pieces fit).
+> Companion documents: `../ULTIMATE-PLAN.md` (why) · `../ARCHITECTURE.md` (how the pieces fit) · **`../CAMPUS-FABRIC.md` (the harvest plane — required reading before any `*B` phase)**.
+
+> **Two tracks.** Numbered phases `00`–`56` build **Plane A — the Core**: dedicated racked nodes, RDMA, storage, tightly-coupled work. Letter-suffixed phases (`01B`, `03B`, `04B`, `08B`, `14B`, `19B`, `25B`, `31B`, `33B`, `36B`, `52B`) form **Track C — the Campus Harvest plane**: several hundred borrowed DIU classroom and lab PCs. Each `*B` phase sits beside the core phase it extends, so all existing numbering and cross-references are unchanged. **Track C is the critical path to first users** — see §8.
 
 ---
 
@@ -54,6 +56,14 @@ Any statement of the form "this is fast" requires a number, a command that produ
 
 ### Rule 9 — Secrets never enter Git in plaintext.
 SOPS+age for bootstrap material, Vault/ESO for everything after Phase 09. If a phase file shows a placeholder like `<REPLACE-ME>`, it means *generate a real value and store it in the secret store*, not *commit the placeholder*.
+
+### Two additional rules for Track C (`*B` phases only)
+
+Rules 1–9 above are unchanged and remain "the Nine Rules". These two apply whenever you are working on a borrowed campus machine, and they outrank convenience every time.
+
+**Rule C1 — Never touch a machine you were not given.** Before any wake, netboot, BIOS change, or enrolment, a signed lab agreement for that specific room must exist in `docs/campus/agreements/`. No pilots, no "just one PC to test", no verbal approval. If the agreement is missing, the phase is BLOCKED — write it up and stop. (`ULTIMATE-PLAN.md` R-20)
+
+**Rule C2 — The human wins, and you must be able to prove it.** Every mechanism you build on the harvest plane must release the machine to a detected human in under 10 seconds, leave no trace on its disk, and stay under its lab's uplink ceiling. "It probably yields fast enough" is not evidence; a recorded eviction trace is. (Law XI, Gates G16/G18)
 
 ---
 
@@ -161,6 +171,10 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
 | 7 — Platform | G12, G14 | Phase 47 |
 | 8 — Performance | G11 | Phase 52 |
 | 9 — Operations | G10, G13 | Phase 56 |
+| **C — Campus Harvest** | **G15, G16, G17** | Phase 31B / 33B |
+| **C — Campus Scale-Out** | **G18, G19** | Phase 52B |
+
+> ⚠️ **The two blocking harvest gates.** No lab is harvested before its agreement is signed and recorded (Phase 04B; risk R-20). No harvest scale-out past 120 nodes before **G15 (work-loss W ≤ 5 %)** passes (Phase 33B; risk R-21). A harvest fabric that wastes a third of what it takes is worse than not building one — it burns the department's electricity and its goodwill simultaneously.
 
 ---
 
@@ -171,9 +185,9 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
 
 | # | Phase | Mission | Est. | Depends on |
 |---|---|---|---|---|
-| **00** | [Repository Foundation & Toolchain](PHASE-00.md) | Create the repo skeleton, dev tooling, linting, CI scaffold, and the conventions every later phase relies on | 2–3 h | — |
-| **01** | [Hardware Inventory & Capability Model](PHASE-01.md) | Build the machine-readable source of truth for every physical machine, including PCIe/NUMA topology and GPU capability flags | 3–4 h | 00 |
-| **02** | [Facility, Power & Thermal Design](PHASE-02.md) | Electrical load study, cooling plan, rack layout, PDU/KVM strategy — the plan that keeps breakers closed | 3–4 h | 01 |
+| **00** | [Repository Foundation & Toolchain](DONE_PHASE-00.md) ✅ | Create the repo skeleton, dev tooling, linting, CI scaffold, and the conventions every later phase relies on | 2–3 h | — |
+| **01** | [Hardware Inventory & Capability Model](DONE_PHASE-01.md) ✅ | Build the machine-readable source of truth for every physical machine, including PCIe/NUMA topology and GPU capability flags | 3–4 h | 00 |
+| **02** | [Facility, Power & Thermal Design](DONE_PHASE-02.md) ✅ | Electrical load study, cooling plan, rack layout, PDU/KVM strategy — the plan that keeps breakers closed | 3–4 h | 01 |
 | **03** | [Network Fabric Design](PHASE-03.md) | Leaf-spine topology, IP/VLAN plan, BGP design, RoCE lossless configuration contract, switch port map | 4–5 h | 01, 02 |
 | **04** | [Security Architecture & Threat Model](PHASE-04.md) | Trust zones, PKI hierarchy, identity model, policy baseline, the audited privileged-workload list | 3 h | 00 |
 | **05** | [Capacity Model & Stage-0 Gate](PHASE-05.md) | Sizing math for compute/storage/network/power; validate G0 + G1; produce the buy list | 3 h | 01–04 |
@@ -274,6 +288,26 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
 | **55** | [Security Hardening & Supply Chain (G13)](PHASE-55.md) | CIS benchmarks, cosign enforcement, SBOM attestation, Tetragon policies, audit review | 5–6 h | 54 |
 | **56** | [Capacity Planning, Documentation & Handover](PHASE-56.md) | Growth model, procurement playbook, complete operator documentation, training, roadmap | 4–5 h | 55 |
 
+### 6.5 Track C — Campus Harvest Plane (`*B`)
+
+*Required reading first: `../CAMPUS-FABRIC.md`. These phases build Plane B — borrowed classroom and lab PCs — and they are the critical path to first users.*
+
+| # | Phase | Mission | Est. | Depends on |
+|---|---|---|---|---|
+| **01B** | [Campus Fleet Survey & Harvest Inventory](PHASE-01B.md) | Survey every candidate lab: machines, GPUs, RAM, switches, uplinks, circuits, ventilation, timetables. Produce the machine-readable campus inventory | 5–6 h | 01 |
+| **04B** | [Consent, Governance & Acceptable Use](PHASE-04B.md) | Lab participation agreements, network approval, data policy, student notice, the five promises, the EULA determination path. **Nothing is harvested before this passes** | 3–4 h | 04, 01B |
+| **03B** | [Campus Network Integration & Uplink Budget](PHASE-03B.md) | VLAN/segment design, locality-domain model, per-lab uplink ceilings as a schedulable resource, egress shaping, WoL/PXE reachability | 4–5 h | 03, 01B, 04B |
+| **08B** | [Netboot Harvest Agent & WoL Fleet Control](PHASE-08B.md) | Diskless PXE→Talos boot that never touches the Windows disk, the one-time BIOS pass, WoL wake/quarantine controller, the leave-no-trace proof | 6–7 h | 08, 03B |
+| **14B** | [Availability Oracle & Harvest Node Onboarding](PHASE-14B.md) | Timetable ingest, reclaim-history model, `predictedFreeSeconds` p50/p10, confidence tiers, harvest labels and taints | 5–6 h | 14, 08B |
+| **25B** | [Edge Cache & the 1 GbE Data Path](PHASE-25B.md) | Per-lab Spegel peer, lab-local dataset cache and seed election, checkpoint landing zone, cold-start budget (G17) | 5–6 h | 25, 03B, 14B |
+| **31B** | [Preemption-First Scheduling & Tiered Checkpointing](PHASE-31B.md) | Deadline-aware admission, the sub-10 s eviction path, three-tier checkpointing, local-first restore, requeue semantics (G16) | 6–7 h | 31, 14B, 25B |
+| **19B** | [Campus GPU Harvesting](PHASE-19B.md) | Heterogeneous consumer/iGPU enumeration, per-model pools, MPS/time-slicing on harvest nodes, power and thermal caps | 4–5 h | 19, 14B |
+| **36B** | [Elastic & Preemption-Tolerant Workload Patterns](PHASE-36B.md) | Ray on churning nodes, right-sized work units, sweep/batch/ETL templates, same-lab Local-SGD training, the user-facing contract | 5–6 h | 36, 31B |
+| **33B** | [Harvest Efficiency Accounting (G15)](PHASE-33B.md) | Classify every node-second as useful/wasted/overhead/idle-unharvested; work-loss ratio; per-lab and per-tenant reporting; the regression gate | 4–5 h | 33, 31B, 45 |
+| **52B** | [Campus Scale-Out Validation (G18/G19)](PHASE-52B.md) | Staged lab-by-lab expansion to 250+ machines, teaching-disruption audit, uplink verification, yield validation | 6–8 h | 52, 33B, 36B |
+
+**Track C parallelizable groups:** `{01B, 04B}` may run concurrently once 01 is done, but 04B must *complete* before 08B touches a machine. `{19B, 36B}` after 31B. `{25B}` may start as soon as 03B is done.
+
 ---
 
 ## 7. Dependency Graph
@@ -304,6 +338,19 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
                                                    53 ──► 54 ──► 55 ──► 56
 ```
 
+**Track C overlay** (campus harvest; `*B` phases attach to the core graph at the points shown):
+
+```
+ 01 ──► 01B ──► 04B ──┬─► 03B ──► 08B ──► 14B ──┬─► 25B ──► 31B ──┬─► 36B ──► 52B
+         (survey)  (CONSENT)                    │                 ├─► 19B      ▲
+                       │                        │                 └─► 33B ─────┘
+                       └── blocks every phase that touches a machine
+         14 ────────────────────────────────────┘
+         25,30,31 ──────────────────────────────┘ (core equivalents must exist first)
+```
+
+> 🚧 **04B is a hard barrier.** No `*B` phase after it may power on, wake, netboot, or enrol a single lab machine until that lab's agreement is signed and recorded. If you are tempted to "just test on one PC first", that is exactly the action risk R-20 describes.
+
 **Parallelizable groups** (safe to run concurrently if you have multiple agents):
 - `{02, 03, 04}` after 01
 - `{18, 24}` after 14
@@ -313,15 +360,31 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
 
 ---
 
-## 8. Minimum Viable Cluster (the fast path)
+## 8. The Beachhead — real users in ~8 weeks, zero hardware purchase
 
-If you need a working 4-node GPU cluster before building the full platform, execute this subset in order. Everything else layers on top later without rework.
+**This is the recommended starting path, and it replaces the old "minimum viable cluster" as the default.** It reaches real users on borrowed campus machines before a single rack, RDMA NIC, or Ceph OSD exists.
+
+```
+00 → 01 → 01B → 04B → 03B → 06 → 07 → 08B → 09 → 12 → 13 → 15 → 14 → 14B → 25B → 30 → 31B
+```
+
+That is **17 phases** and yields: signed lab agreements, a surveyed campus inventory, netboot harvest of 40–120 classroom PCs that leave no trace on the machines, HA Kubernetes with GitOps, per-lab P2P caching, quota-managed queues, a timetable-aware Availability Oracle, and preemption-first scheduling with tiered checkpointing.
+
+**Users can run on it:** hyperparameter sweeps, batch inference, dataset preprocessing, CI, rendering, and checkpointed single-node training.
+**It is missing:** RDMA, multi-node training, distributed storage, GPU pooling depth, full observability, and every Core-Plane performance guarantee.
+**Capital cost: $0** for the harvest fabric; the 3-node Core control plane can be existing machines.
+
+> 💡 **Why this beats the old fast path.** The old 18-phase route needed purchased hardware, a facility, and a network before anyone could log in — the fair criticism in the 07 Sep 2026 comparative review (`../CAMPUS-FABRIC.md §12`). This one needs none of it, delivers more aggregate GPU-hours than a 6-node dedicated pilot, and leaves the entire Core track intact to build afterwards without rework.
+
+### 8.1 The Core-only fast path (still valid)
+
+If you have dedicated hardware in hand and campus consent is still pending, the original subset stands:
 
 ```
 00 → 01 → 03 → 06 → 07 → 08 → 09 → 12 → 13 → 14 → 15 → 18 → 19 → 20 → 25 → 30 → 31 → 36
 ```
 
-That is **18 phases** and yields: provisioned Talos nodes, HA Kubernetes, Cilium, GPU allocation via DRA, NUMA-aligned scheduling, local scratch storage, quota-managed batch queues, gang scheduling, and Ray. You can train on it. It is missing: RDMA, distributed storage, observability, multi-tenancy, and every performance guarantee. **Do not call it production.**
+**18 phases** → provisioned Talos nodes, HA Kubernetes, Cilium, GPU allocation via DRA, NUMA-aligned scheduling, local scratch storage, quota-managed batch queues, gang scheduling, and Ray. You can train on it. It is missing: RDMA, distributed storage, observability, multi-tenancy, and every performance guarantee. **Do not call it production.**
 
 ---
 
@@ -356,4 +419,4 @@ If any box is unchecked, the phase is **incomplete**. Report it as incomplete. A
 
 ---
 
-*Begin with [PHASE-00.md](PHASE-00.md).*
+*Phases 00, 01, and 02 are complete (`DONE_PHASE-00.md`, `DONE_PHASE-01.md`, `DONE_PHASE-02.md`). Begin with [PHASE-01B.md](PHASE-01B.md) for the Beachhead path (currently blocked on survey authorization — see `evidence/phase-01B/BLOCKED.md`), or [PHASE-03.md](PHASE-03.md) for the Core track.*
