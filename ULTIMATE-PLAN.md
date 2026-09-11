@@ -4,8 +4,11 @@
 
 > **Codename:** NEXUS
 > **Class:** Private HPC/AI Cloud — Tier-1 performance on Tier-3 hardware
-> **Scale target:** 8 nodes (Day 1) → 24 (Quarter 2) → 48 (Quarter 3) → **100+ nodes** (Year 1)
+> **Shape:** **Two compute planes under one control plane.**
+> **Plane A — Core:** 4–8 dedicated racked nodes (Day 1) → 24 → 48 → **100+** (Year 1+). RDMA, storage, tightly-coupled work.
+> **Plane B — Campus Harvest:** **150–400 existing DIU classroom and lab PCs**, borrowed outside class hours, zero procurement. See **`CAMPUS-FABRIC.md`**.
 > **Prime directive:** *Never pay a performance tax for the privilege of being distributed.*
+> **Second directive:** *Never waste a borrowed machine-second, and never inconvenience the human who owns it.*
 
 ---
 
@@ -26,6 +29,8 @@
 13. [Success Criteria & Acceptance Gates](#13-success-criteria--acceptance-gates)
 14. [Roadmap & Phase Map](#14-roadmap--phase-map)
 15. [Glossary](#15-glossary)
+
+> **Read `CAMPUS-FABRIC.md` alongside this document.** It is the design of record for Plane B — the campus harvest fabric — and it carries the availability model, the 1 GbE capability boundary, the consent contract, and the seven backend mechanisms that make borrowed capacity efficient. This file remains the authority on Plane A and on everything both planes share.
 
 ---
 
@@ -59,6 +64,7 @@ The system is built on four load-bearing ideas:
 - A **multi-node distributed compute layer** (Ray, PyTorch FSDP/DDP, DeepSpeed, MPI, Spark, Dask, vLLM) so that workloads *designed* for distribution transparently span machines.
 - A **shared storage fabric** built from the local disks of every node — replicated, tiered, and cached.
 - A **performance engineering discipline**: continuous benchmarking, regression gates, and roofline analysis baked into CI.
+- A **campus harvest fabric** (`CAMPUS-FABRIC.md`) that turns several hundred already-owned, dual-use classroom and lab PCs into scheduled, preemption-tolerant capacity — governed by a timetable-aware **Availability Oracle**, a sub-10-second eviction path, and tiered checkpointing that keeps measured work loss below 5 %.
 
 ### ❌ We are NOT building
 
@@ -67,6 +73,8 @@ The system is built on four load-bearing ideas:
 - **A unified VRAM pool for arbitrary applications.** Unmodified CUDA programs will not magically see 100 GPUs' worth of VRAM. Programs must use model/tensor/pipeline parallelism or sharding to span devices.
 - **API-transparent GPU remoting for production** (rCUDA / bitfusion-style). Interesting for dev ergonomics, disastrous for training throughput. We provide it as an *optional developer convenience tier only*, clearly labeled as slow.
 - **A public cloud.** No untrusted tenants, no hostile multi-tenancy assumptions, no billing engine. Trusted-org multi-tenancy only.
+- **A pretence that classroom PCs can do everything.** Harvest nodes sit on campus 1 GbE. They will never run data-parallel DDP/FSDP, RDMA collectives, tightly-coupled MPI, or distributed storage. That work goes to Plane A, always. See `CAMPUS-FABRIC.md §5`.
+- **A background screensaver that steals cycles.** Every harvested machine is harvested with a signed lab agreement, inside declared windows, with a published five-promise contract and an instant per-lab opt-out. The human at the keyboard outranks every workload in the cluster.
 
 ---
 
@@ -86,6 +94,13 @@ These are the tie-breakers. When two designs conflict, the one that better satis
 | **VIII. Measure Before You Tune, Prove After** | No tuning parameter enters `main` without a before/after benchmark in the PR. | Performance CI (Phase 49) |
 | **IX. Degrade Gracefully** | Losing the control plane must not kill running jobs. Losing a rack must not lose data. Losing the internet must not stop the cluster. | Static pods, 3-way replication across racks, local registry mirror |
 | **X. The Boring Choice Wins** | Prefer the component with the largest operational surface area of prior art. Novelty is a liability at 100 nodes. | Documented in each ADR |
+
+**Two campus amendments.** Laws I–X are unchanged and remain "the Ten Laws" everywhere they are cited. The harvest plane adds two invariants that only apply to borrowed machines, and they outrank every law above when a harvest node is involved:
+
+| Law | Statement | Enforcement |
+|-----|-----------|-------------|
+| **XI. The Human Owns the Machine** | On a borrowed PC, a detected human beats every workload, every priority class, and every SLO. There is no override and no "let it finish". | Sub-10 s eviction path (Phase 31B); Gate G16 |
+| **XII. Never Waste a Borrowed Second** | Work is not placed where it cannot finish. Every eviction costs at most one checkpoint interval, and no byte is fetched into a lab twice. | Availability Oracle (14B), tiered checkpointing (31B), P2P cache (25B); Gate G15 (W ≤ 5 %) |
 
 ---
 
@@ -222,6 +237,39 @@ Ceph's BlueStore issues `fsync` on the write path. **Putting Ceph OSD WAL/DB on 
 - **Tier 3 — Object/archive:** Ceph RGW or MinIO on HDD + SSD metadata, erasure-coded.
 - **Tier 4 — Cache:** JuiceFS/Alluxio distributed cache over Tier 3, materializing hot datasets into Tier 0.
 
+### 4.8 The Availability Boundary — We Do Not Own the Machine's Time
+
+This constraint applies only to Plane B, and it is as hard as the memory boundary in §4.1. A classroom PC belongs to a lab whose scheduled class outranks us absolutely. Full treatment in `CAMPUS-FABRIC.md §3–§4`; the physics in brief:
+
+| Reclaim event | Notice | Frequency per node | Required response |
+|---|---|---|---|
+| Timetable class begins | Hours (known future) | 2–5 × weekday | Cordon → drain → checkpoint → reboot to Windows before the bell |
+| Human sits down unscheduled | 0–15 s | Unpredictable | Release the machine in **< 10 s** |
+| Power cut / physical switch | **None** | Weekly across a 250-machine fleet | Lose ≤ 1 checkpoint interval; requeue |
+| Uplink contention from teaching traffic | Seconds | Class hours | Shed our own I/O first, always |
+
+**Derived law: no unit of work on a harvest node may assume it will finish.** It is shorter than the predicted window, or checkpointed at a shorter interval than the window, or idempotent and cheap to re-run. The admission controller enforces this — it is not left to users.
+
+**The governing metric is the work-loss ratio** `W = wasted_node_seconds / harvested_node_seconds`. A naive volunteer-computing setup on a campus timetable runs at **W ≈ 35–60 %**. NEXUS targets **W ≤ 5 %** (Gate G15) via deadline-aware placement, tiered checkpointing, and local-first restore. This is the number the whole harvest backend exists to move, and it is the honest measure of "less resource loss".
+
+### 4.9 The Campus Network Reality — 1 GbE, and the Uplink Is the Wall
+
+§4.4 already sentenced 1 GbE for collectives: a 7 B-model AllReduce takes **~240 s per step**. That verdict stands. Harvest nodes therefore **never** run DDP/FSDP, MPI, RDMA collectives, shuffle-heavy Spark/Dask, or Ceph OSDs. What they run instead — sweeps, batch inference, preprocessing, single-node training, CI, rendering, and low-communication Local-SGD/DiLoCo-style training that syncs every 100–500 steps — is the majority of real university ML work, and it is entirely insensitive to the constraint.
+
+The binding limit is not the access port; it is the **shared lab uplink**:
+
+```
+Lab of 30 PCs behind one 1 GbE uplink →  ~4 MB/s per PC of sustained off-lab bandwidth
+A 2 GB image pulled 30× from a central registry = 60 GB = 8 minutes of a saturated uplink
+— during which the lab's own teaching traffic is degraded. Do that once and consent is revoked.
+```
+
+Three rules, enforced in code:
+
+1. **Never fetch the same bytes twice into a lab** — Spegel P2P images + a lab-local dataset cache make N machines cost ~1× the bytes (Phase 25B).
+2. **The uplink is a schedulable resource** — modeled exactly like the per-rack power budget of §4.5, with a hard NEXUS ceiling of 40 % during class hours / 70 % outside them (Phase 03B).
+3. **Egress shaping on every harvest node** — NEXUS traffic yields instantly to teaching traffic. We are never the reason a lecture stutters (Gate G18).
+
 ---
 
 ## 5. Target Capability Model
@@ -241,6 +289,18 @@ What NEXUS must be able to run on day one of general availability, with publishe
 | **Big-data ETL** | 1000s of CPU cores | Shuffle-heavy, storage-bound | Spark / Dask on K8s + Tier-0 shuffle | Shuffle at ≥ 60 % of aggregate NIC BW |
 | **CI / build farm** | Short, many, CPU-only | Seconds–minutes | BuildKit + Kueue low-priority | Queue time < 15 s |
 | **Long-running services** | Platform itself | HA, always-on | Deployments + PDBs + anti-affinity | 99.9 % control-plane availability |
+
+**Plane B — harvest workload classes** (`CAMPUS-FABRIC.md §5.1`, §11). These run on borrowed classroom PCs and are admitted only against a confidence tier from the Availability Oracle:
+
+| Workload class | Tier | Resource pattern | Platform mechanism | SLO |
+|---|---|---|---|---|
+| **Hyperparameter sweep trial** | Bronze–Gold | 1 GPU or N cores, minutes–hours, independent | Ray Tune / Argo Workflows + harvest `ClusterQueue` | Start < 90 s; ≥ 95 % of trials complete without re-execution |
+| **Batch / offline inference** | Silver–Gold | 1 GPU fraction, stream in/out | KServe batch + KEDA over harvest pool | Throughput within 15 % of the same GPU on Plane A |
+| **Dataset preprocessing / ETL shard** | Bronze–Gold | CPU-heavy, read-once write-once | Argo Workflows, partitioned | Shard restart cost ≤ 1 checkpoint interval |
+| **Single-node training (Gold window)** | Gold | 1 GPU, hours, checkpointed | Kueue Job + tiered checkpointing (31B) | Progress loss per eviction ≤ 15 min |
+| **Low-communication distributed training** | Gold, same-lab only | 4–16 nodes, sync every 100–500 steps | Local-SGD/DiLoCo pattern + TAS pinned to one lab | ≥ 80 % of single-node-×-N throughput |
+| **CI / build farm** | Bronze | Seconds–minutes, CPU-only | BuildKit + lowest priority | Queue time < 30 s; retry rate < 2 % |
+| **Any harvest job** | — | — | Law XI | Releases the machine to a detected human in **< 10 s p99**; never delays a Plane A job of equal priority |
 
 ---
 
@@ -284,6 +344,23 @@ NEXUS defines five archetypes. Every physical machine is classified into exactly
 
 #### **Archetype D — `compute-cpu`** (optional, cheap capacity)
 GPU-less machines, older CPUs. Serve CI, ETL, Spark/Dask, preprocessing. Same networking floor (25 GbE) — a slow node poisons a shuffle.
+
+#### **Archetype F — `harvest`** (150–400 nodes, borrowed, Plane B)
+
+An existing DIU classroom or lab PC. **We specify nothing about it — we survey it** (Phase 01B) and classify what we find. It is the only archetype whose spec is an output rather than an input.
+
+| Component | Typical reality | Consequence |
+|---|---|---|
+| CPU | 4–16 cores, mixed generations | CPU pool is deep and genuinely useful; NUMA usually single-socket |
+| RAM | 8–32 GB, non-ECC | Caps per-job working set; admission control by measured RAM, never by nameplate |
+| GPU | None / iGPU / consumer discrete (GTX 16xx → RTX 40xx) | Per-model pools; homogeneous placement groups; many nodes are CPU-only and that is fine |
+| Disk | Windows install we must not touch | **Diskless netboot.** OS runs in RAM; internal disk is never mounted |
+| NIC | 1 GbE to a shared lab uplink | §4.9. No collectives, no storage replicas |
+| Power control | WoL only (no BMC, no PDU) | Wake by magic packet; shutdown by Talos API; a node that will not wake is quarantined, not chased |
+| Availability | Timetable-bounded, ~103 h/week | §4.8; drives the Availability Oracle |
+| Ownership | **A lab, not us** | Signed agreement required before first harvest (Phase 04B). One label removes a lab instantly. |
+
+**Hard exclusions** (`CAMPUS-FABRIC.md §3.3`): never a storage replica, never an etcd member, never a rank in a gang-scheduled RDMA job, never a holder of secrets or regulated data. Tainted `nexus.io/harvest=true:NoSchedule` so nothing lands there without explicitly tolerating churn.
 
 #### **Archetype E — `infra`** (2–3 nodes)
 Hosts the platform itself: registry, Argo CD, Prometheus/Mimir, Grafana, Vault, Keycloak, Harbor. Tainted so user workloads never land here. Kept off the compute pool so a runaway training job cannot take down observability.
@@ -425,6 +502,7 @@ The architecture is chosen so that **nothing structural changes** between these 
 | Milestone | Nodes | Control plane | Network | Storage | Notable additions |
 |---|---|---|---|---|---|
 | **M0 — Lab** | 1 (all-in-one) | Single Talos node | Existing LAN | local-path | Validate the whole stack in a VM/1 box |
+| **M0.5 — Beachhead** | 3 core + **40–120 harvested lab PCs** | 3-node etcd | Existing campus 1 GbE + one 25 GbE core switch | local-path + lab-local cache (no Ceph yet) | **Real users in ~8 weeks, $0 hardware.** Sweeps, batch inference, preprocessing, CI on borrowed capacity. Gates G15–G17. |
 | **M1 — Pilot** | 8 (3 ctrl + 4 GPU + 1 storage) | 3-node etcd | 1× 25/100 GbE switch | Ceph 3-way, 1 failure domain | Prove B1–B6, GitOps, first training job |
 | **M2 — Squad** | 24 | 3-node etcd, dedicated | 2 leaves + MLAG | Ceph across 3 racks | Kueue quotas, multi-tenancy, Ray autoscaling |
 | **M3 — Wing** | 48 | 3-node etcd + 3 infra | 4 leaves + 2 spines, BGP | 5 storage nodes, RGW | Slinky, JuiceFS cache, Mimir long-term metrics |
@@ -438,6 +516,9 @@ The architecture is chosen so that **nothing structural changes** between these 
 | etcd write amplification | ~5,000 pods / high event churn | Separate etcd for events; `--event-ttl=30m`; reduce `kubelet` status frequency |
 | kube-proxy iptables O(n) | ~1,000 services | Already eliminated — Cilium eBPF from day one |
 | Image pull storm | ~50 nodes | Spegel P2P mirror + Harbor proxy cache + pre-pull DaemonSet |
+| **Lab uplink saturation (harvest)** | **~15 nodes in one lab** | Per-lab Spegel peer + lab-local dataset cache + uplink modeled as a schedulable resource (Phase 03B/25B) |
+| **Node churn overwhelms the scheduler** | **~150 harvest nodes** | Batched join/leave reconciliation; Oracle publishes labels on a fixed cadence, not per-event; Kueue admission batching |
+| **Kubelet/etcd write churn from twice-daily fleet cycling** | **~200 harvest nodes** | Harvest nodes use a longer status update interval; separate events etcd; node objects are reused, not recreated |
 | Prometheus cardinality | ~40 nodes with DCGM | Mimir + recording rules + label dropping (Phase 45) |
 | Scheduler throughput | ~5,000 pending pods | `percentageOfNodesToScore`, Kueue admission batching |
 | L2 broadcast domain | ~256 hosts | L3-to-the-host BGP from M3 onward |
@@ -492,6 +573,27 @@ Public-cloud equivalent (24 GB-class GPU, on-demand): **$1.10–$2.60/GPU-hour**
 
 **Break-even utilization vs. cloud @ $1.50/GPU-hr: ~20 %.** Above that, NEXUS wins. This is the economic thesis.
 
+### 11.2b Cost Model — Plane B (Campus Harvest)
+
+The economics are categorically different because the capital cost was paid years ago by someone else.
+
+| Line item | Cost |
+|---|---|
+| Hardware | **$0** — already owned |
+| Facility, cooling, electrical | **$0** — already provisioned for these machines |
+| Network | **$0** — existing campus LAN |
+| Incremental electricity (260 machines × 200 W avg × 103 h/wk × 52 × $0.12/kWh) | ≈ **$33,400/yr** at expected scale |
+| PXE/DHCP/WoL seed infrastructure + per-lab config | ≈ **$1,500** one-off |
+| Beachhead Core (3 control + 1 storage, deferrable) | ≈ **$8–12 k** |
+
+```
+Expected scenario: 260 machines, ~90 GPU-equipped, 103 harvest-h/week
+  ≈ 9,270 GPU-h/week + 214,000 CPU-core-h/week
+  $33,400 / (9,270 × 52)  ≈  $0.07 per harvested GPU-hour
+```
+
+**Below every figure in §11.2**, and roughly **4–7× the GPU-hours a 6-node dedicated pilot yields**, at zero procurement. The trade is that these GPU-hours are individually less capable and interruptible — which is precisely what §4.8, §4.9 and the seven mechanisms in `CAMPUS-FABRIC.md §7` exist to compensate for. Full breakdown: `CAMPUS-FABRIC.md §10`.
+
 ### 11.3 The Non-Financial Return
 
 Data sovereignty · zero egress · full hardware observability (you can read PCIe counters) · no capacity queues · no instance-type roulette · a team that actually understands its infrastructure.
@@ -521,6 +623,23 @@ Data sovereignty · zero egress · full hardware observability (you can read PCI
 | **R-17** | **Noise / physical environment unsuitable** | M | Medium | 🟡 | 100 GPU PCs ≈ 85–95 dBA. Dedicated room with acoustic treatment; never an office space. | 02 |
 | **R-18** | **Storage rebuild storm saturates the fabric** | M | High | 🟠 | Ceph `osd_max_backfills` throttles, separate cluster network, QoS class for recovery traffic | 25, 20 |
 
+### 12.1 Harvest-Plane Risks (Plane B)
+
+These are ranked by what actually ends the programme, not by what is technically hardest. **R-19 is the highest-consequence risk in the entire project** — higher than any electrical or performance risk — because it cannot be fixed with engineering once it fires.
+
+| ID | Risk | P | I | Score | Mitigation | Owner phase |
+|---|---|---|---|---|---|---|
+| **R-19** | **A class, lecture, or exam is disrupted by NEXUS** — a busy PC, a mid-lecture reboot, a stuttering video. One incident can end the programme by email. | M | **Critical** | 🔴 | Law XI enforced in code: < 10 s release, hard uplink ceiling, egress shaping below teaching traffic, drain completes before the bell, Mode B off by default and opt-in only after 4 clean weeks | 03B, 04B, 31B |
+| **R-20** | **Harvesting without consent** — machines taken before a signed lab agreement, or outside declared windows | L | **Critical** | 🔴 | Phase 01B is BLOCKED until ≥ 1 signed agreement exists; the fabric refuses to enrol a lab with no agreement record; per-lab instant opt-out by one label | 01B, 04B |
+| **R-21** | **Work loss makes the harvest fabric a net waste of electricity** (W ≥ 25 %) | M | High | 🟠 | Availability Oracle + deadline-aware admission + tiered checkpointing + local-first restore; Gate G15 blocks scale-out until W ≤ 5 % | 14B, 31B, 33B |
+| **R-22** | **Lab uplink saturation degrades teaching traffic** (the fastest path to R-19) | H | High | 🔴 | Uplink modeled as a schedulable resource with a 40 %/70 % ceiling; per-lab Spegel peer and dataset cache so N machines cost 1× the bytes; per-node traffic shaping | 03B, 25B |
+| **R-23** | **Physical/data exposure on a publicly accessible machine** — console access, disk removal, shoulder-surfing | M | High | 🟠 | Diskless netboot means every power cycle is a guaranteed wipe; short-lived scoped node identity; no secrets, no PII, no tenant data at rest without explicit opt-in + encryption; Kyverno blocks the claim outright | 04B, 08B |
+| **R-24** | **We leave a trace on a lab PC** — modified partition, installed agent, broken Windows boot | L | High | 🟠 | Internal disk is never mounted or enumerated; the only change is one BIOS boot-order entry, reversible in 30 s by any technician; documented rollback per lab | 08B |
+| **R-25** | **Timetable data is wrong or stale** — the Oracle promises windows that do not exist | M | Medium | 🟡 | Historical reclaim telemetry corrects the timetable; p10 (not p50) used for admission; exam-week blackout is a hard manual override | 14B |
+| **R-26** | **WoL unreliable across the fleet** (ErP/deep-sleep, driver settings, switch config) | H | Medium | 🟠 | One-time BIOS pass per lab captured as a signed checklist; nodes that fail to wake are quarantined and reported, never chased by hand; yield targets assume a 10 % wake-failure floor | 08B |
+| **R-27** | **Consumer GPU heterogeneity across ~20 labs makes pools unusably fragmented** | H | Medium | 🟠 | Per-model labels from the Phase 01B survey; homogeneous placement groups; the dominant workload class (independent trials) does not care about heterogeneity at all | 01B, 19B |
+| **R-28** | **Sustained load shortens lab hardware life, or overheats a room without ventilation** | M | Medium | 🟡 | Power caps at the efficiency knee, thermal ceilings below vendor limits, per-room ventilation check in the survey, no sustained load in rooms that fail it | 01B, 19B |
+
 ---
 
 ## 13. Success Criteria & Acceptance Gates
@@ -544,12 +663,19 @@ Data sovereignty · zero egress · full hardware observability (you can read PCI
 | **G12** | Zero manual `kubectl apply` in the preceding 30 days | Argo CD drift report + audit log | GA |
 | **G13** | 100 % of running images are signed and SBOM-attested | Kyverno policy report | GA |
 | **G14** | On-call runbook exists for every alert that can fire | Alert-to-runbook coverage report = 100 % | GA |
+| **G15** | **Work-loss ratio W ≤ 5 %** over a rolling 7-day window at ≥ 100 harvest nodes | `harvest_efficiency` recording rules + report committed | Harvest scale-out past 120 nodes |
+| **G16** | **Human-presence → machine released: p99 ≤ 10 s** (Mode B); Mode A drain completes before the window closes, 100 % of the time | Instrumented eviction trace, 100 samples | Any Mode B enablement |
+| **G17** | **Cold start of a 30-PC room: p95 ≤ 5 min** from WoL to first workload pod running | Timed, recorded, repeated 3× in 3 different labs | Beachhead GA |
+| **G18** | **Zero teaching-time incidents attributable to NEXUS over 30 consecutive days**, and NEXUS uplink share never exceeded its ceiling | Incident log + per-lab uplink utilization report | Campus scale-out |
+| **G19** | Harvest yield ≥ **60 %** of theoretical availability (`useful / (useful + wasted + overhead + idle-unharvested)`) | Harvest accounting dashboard, 7-day window | Campus GA |
 
 ---
 
 ## 14. Roadmap & Phase Map
 
-**57 phases across 10 stages.** Each phase is a self-contained work order in `phases/`, sized for a single focused session. See `phases/README.md` for the execution protocol.
+**57 core phases across 10 stages, plus 11 campus phases in Track C.** Each phase is a self-contained work order in `phases/`, sized for a single focused session. See `phases/README.md` for the execution protocol and §6.5 there for the Track C index.
+
+**Track C (`*B` phases) is not a tenth stage — it is a parallel track.** Each `*B` phase is numbered to sit beside the core phase it extends (e.g. `PHASE-14B` extends node onboarding with the Availability Oracle), so core numbering and every existing cross-reference are unchanged. Track C is what makes the Beachhead possible; the core track is what makes Plane A possible. They converge at Phase 33B/52B.
 
 | Stage | Phases | Theme | Outcome |
 |---|---|---|---|
@@ -563,18 +689,25 @@ Data sovereignty · zero egress · full hardware observability (you can read PCI
 | **7 — Platform Experience** | `42`–`47` | Backstage, notebooks/IDE, registry + build farm, MLflow, full observability, SLOs/on-call | A private cloud people *want* to use |
 | **8 — Performance Engineering** | `48`–`52` | Benchmark harness, systematic tuning, performance CI, distributed profiling, 100-node scale validation | Proven, defended, regression-gated performance |
 | **9 — Operations & Evolution** | `53`–`56` | Day-2 upgrades, chaos/DR, security hardening, capacity planning & handover | A platform that outlives its builders |
+| **C — Campus Harvest (parallel track)** | `01B`–`52B` | Campus survey, consent, network integration, netboot harvest agent, Availability Oracle, GPU harvesting, edge cache, preemption-first scheduling, elastic patterns, harvest accounting, campus scale-out | Several hundred borrowed PCs turned into efficient, consented, measured capacity |
 
-**Indicative timeline** (1 engineer full-time, or 2–3 part-time):
+**Indicative timeline** (1 engineer full-time, or 2–3 part-time). Track C runs *in front of* the core track, because it reaches real users first:
 
 ```
-Month 1  ████████░░░░░░░░░░░░  Stage 0–1   Design + bootstrap (8-node pilot)
-Month 2  ░░░░████████░░░░░░░░  Stage 2–3   K8s + GPU/RDMA fabric
-Month 3  ░░░░░░░░████████░░░░  Stage 4–5   Storage + scheduling
-Month 4  ░░░░░░░░░░░░████████  Stage 6     Distributed compute frameworks
-Month 5  ░░░░░░░░░░░░░░██████  Stage 7     Platform UX + observability
-Month 6  ░░░░░░░░░░░░░░░░████  Stage 8     Performance engineering → M2 (24 nodes)
-Month 7+ ░░░░░░░░░░░░░░░░░░██  Stage 9     Ops maturity → M3 (48) → M4 (100+)
+Week 1–2   ███░░░░░░░░░░░░░░░░░  00 → 01 → 01B → 04B   Repo, core inventory, campus survey, CONSENT SIGNED
+Week 3–4   ░░████░░░░░░░░░░░░░░  03B → 06 → 07 → 08B     Network integration, seed node, netboot harvest agent
+Week 5–6   ░░░░████░░░░░░░░░░░░  09 → 12 → 13 → 15        Talos, HA control plane, Cilium, GitOps
+Week 7–8   ░░░░░░████░░░░░░░░░░  14 → 14B → 25B → 30 → 31B  Oracle, edge cache, Kueue, preemption-first scheduling
+           ▲ M0.5 BEACHHEAD — first real users on 40–120 borrowed PCs, $0 hardware
+Month 3    ░░░░░░░░████░░░░░░░░  19B → 36B → 33B → 43 → 45  GPU harvesting, elastic patterns, accounting, notebooks, observability
+Month 4    ░░░░░░░░░░████░░░░░░  02 → 03 → 05 → 18–23        Core Plane: facility, RDMA fabric, GPU/acceleration stack
+Month 5    ░░░░░░░░░░░░████░░░░  24–29 → 32–35              Storage fabric + full scheduling/accounting
+Month 6    ░░░░░░░░░░░░░░████░░  36–41 → 42–47              Distributed compute + platform experience
+Month 7    ░░░░░░░░░░░░░░░░███░  48–52 → 52B               Performance engineering → campus scale-out (G18/G19)
+Month 8+   ░░░░░░░░░░░░░░░░░░██  53–56                     Ops maturity → M2 (24 core) → M3 → M4
 ```
+
+> **Why this ordering changed.** The original sequence spent months on facility, RDMA and storage before a single user could log in — the fair criticism in the 07 Sep 2026 comparative review. The campus fleet needs none of those things, so Track C front-loads the work that produces users and defers the work that produces capability. Nothing is deleted; the ordering is inverted where the dependency graph allows it. See `CAMPUS-FABRIC.md §12`.
 
 ---
 
@@ -603,6 +736,16 @@ Month 7+ ░░░░░░░░░░░░░░░░░░██  Stage 9  
 | **SR-IOV** | Single-Root I/O Virtualization — a physical NIC presents multiple virtual functions (VFs) |
 | **TAS** | Topology-Aware Scheduling — Kueue's placement of a gang within the tightest network domain |
 | **XID** | NVIDIA GPU error code reported by the driver; the primary GPU health signal |
+| **Availability Oracle** | The controller that predicts, per harvest node, how many seconds of uninterrupted compute can be promised and at what confidence; consumed at admission time (`CAMPUS-FABRIC.md §4`) |
+| **Beachhead (M0.5)** | The first milestone that serves real users: 3 core nodes + 40–120 harvested lab PCs, ~8 weeks, zero hardware purchase |
+| **Confidence tier** | Gold / Silver / Bronze / Blocked — the classification of a harvest node's predicted free window, which determines what may be admitted onto it |
+| **Harvest node** | Archetype F: a borrowed DIU classroom or lab PC, netbooted diskless, timetable-bounded, preemptible at any moment |
+| **Locality domain** | For Plane B, a **lab** — simultaneously the shared-uplink, failure, scheduling, and consent domain |
+| **Local-SGD / DiLoCo** | Low-communication distributed training that synchronizes every 100–500 steps rather than every step; the only form of multi-node training viable over 1 GbE |
+| **Mode A / Mode B** | Scheduled harvest (netboot outside class hours, ~90 % of yield) vs. opportunistic harvest (idle machines during class hours, opt-in per lab) |
+| **Plane A / Plane B** | Core (dedicated, racked, RDMA) vs. Campus Harvest (borrowed, 1 GbE, churning). One control plane governs both |
+| **Spegel** | Peer-to-peer container image mirror; turns an O(N) image pull into O(1) per locality domain |
+| **Work-loss ratio (W)** | `wasted_node_seconds / harvested_node_seconds` — the governing efficiency metric of the harvest plane. Target ≤ 5 % (Gate G15) |
 
 ---
 
@@ -611,7 +754,11 @@ Month 7+ ░░░░░░░░░░░░░░░░░░██  Stage 9  
 > **NEXUS** is a bare-metal Kubernetes cluster on Talos Linux, provisioned by Tinkerbell, networked by Cilium over a 100 GbE RoCEv2 Clos fabric, accelerated by the NVIDIA GPU Operator with DRA-based fractional GPU allocation, stored on a four-tier fabric (local NVMe → Mayastor → Rook-Ceph → object + JuiceFS cache), scheduled by Kueue with gang and topology-aware placement, running Ray / PyTorch / MPI / Spark / vLLM workloads, observed by Prometheus-Mimir-Grafana-Loki-Tempo-Parca-Kepler, governed by Argo CD GitOps, and defended by continuous benchmarking with hard regression gates.
 >
 > **It does not pool RAM or VRAM.** It pools *cores, devices, bandwidth, and bytes* — and it makes distribution cheap enough that sharded workloads behave as if it did.
+>
+> **And it runs on two planes.** A small, correctly-built **Core** carries everything that is latency-bound: RDMA collectives, distributed storage, state, tightly-coupled training. A **Campus Harvest fabric** of several hundred already-owned DIU classroom PCs carries everything that is throughput-bound and independent — sweeps, batch inference, preprocessing, CI, single-node training — for the cost of the electricity alone. A timetable-aware Availability Oracle refuses to place work where it cannot finish, a sub-10-second eviction path guarantees the human at the keyboard always wins, and tiered checkpointing with per-lab P2P caching keeps measured work loss under 5 %.
+>
+> **The thesis in one line:** the campus already contains more idle compute than the department could afford to buy — the engineering problem is not acquiring capacity, it is harvesting it without waste and without ever inconveniencing a human.
 
 ---
 
-*Next: read `ARCHITECTURE.md` for the component-level design, then `phases/README.md` for the execution protocol.*
+*Next: read `CAMPUS-FABRIC.md` for the harvest plane, `ARCHITECTURE.md` for the component-level design, then `phases/README.md` for the execution protocol.*

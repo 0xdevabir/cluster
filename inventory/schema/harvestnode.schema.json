@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/harvestnode.json",
+  "title": "NEXUS HarvestNode",
+  "description": "Phase 01B (Campus Fleet Survey & Harvest Inventory) — one entry per surveyed campus machine. CAMPUS-FABRIC.md#8.1.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "lab", "chassis", "cpu", "memory", "gpu", "disk", "network", "firmware", "probeConfidence", "harvestEligible"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "lab": { "type": "string" },
+      "mac": { "type": "string", "pattern": "^([0-9a-f]{2}:){5}[0-9a-f]{2}$" },
+      "chassis": { "type": "string" },
+      "cpu": {
+        "type": "object",
+        "required": ["model", "cores", "threads", "sockets"],
+        "additionalProperties": false,
+        "properties": {
+          "model": { "type": "string" },
+          "cores": { "type": "integer", "minimum": 1 },
+          "threads": { "type": "integer", "minimum": 1 },
+          "sockets": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "memory": {
+        "type": "object",
+        "required": ["measuredBytes"],
+        "additionalProperties": false,
+        "properties": {
+          "measuredBytes": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "gpu": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["model", "class"],
+          "additionalProperties": false,
+          "properties": {
+            "model": { "type": "string" },
+            "vramMiB": { "type": "integer", "minimum": 0 },
+            "computeCapability": { "type": "string" },
+            "class": { "enum": ["none", "igpu", "consumer-discrete"] }
+          }
+        }
+      },
+      "disk": {
+        "type": "object",
+        "required": ["internal", "layout", "policy"],
+        "additionalProperties": false,
+        "properties": {
+          "internal": { "type": "string" },
+          "layout": { "type": "string" },
+          "policy": { "const": "never-touch" }
+        }
+      },
+      "network": {
+        "type": "object",
+        "required": ["speedMbps", "wolCapable", "switchPort"],
+        "additionalProperties": false,
+        "properties": {
+          "speedMbps": { "type": "integer", "minimum": 0 },
+          "wolCapable": { "type": "boolean" },
+          "switchPort": { "type": ["string", "null"] }
+        }
+      },
+      "firmware": {
+        "type": "object",
+        "required": ["mode", "secureBoot", "pxeCapable"],
+        "additionalProperties": false,
+        "properties": {
+          "mode": { "enum": ["UEFI", "BIOS"] },
+          "secureBoot": { "type": "boolean" },
+          "pxeCapable": { "type": ["boolean", "null"] }
+        }
+      },
+      "probeConfidence": { "enum": ["probed", "representative", "assumed"] },
+      "harvestEligible": { "type": ["boolean", "null"] }
+    },
+    "allOf": [
+      {
+        "if": { "properties": { "network": { "properties": { "wolCapable": { "const": true } } } } },
+        "then": { "required": ["mac"] }
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+# TODO(phase-01B): real entries require switch SNMP counters (preferred) or an
+# off-hours-only iperf3 sample. This is a stub so `task validate:campus`
+# passes on a survey-less repo.
+- lab: cse-402
+  accessSwitch: "sw-dt-4f-02"
+  accessPortSpeedMbps: 1000
+  uplinkSpeedMbps: 1000
+  uplinkOversubscription: "32:1"
+  measuredBaselineMbps:
+    classHoursP95: 180
+    offHoursP95: 12
+  nexusCeilingMbps:
+    classHours: 400
+    offHours: 700
+  source: "switch SNMP counters, 7-day sample"

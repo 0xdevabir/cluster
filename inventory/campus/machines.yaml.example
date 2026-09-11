@@ -1,0 +1,18 @@
+# TODO(phase-01B): real entries come from tools/campus/probe-harvest-node.sh output.
+# This is a stub example so `task validate:campus` passes on a survey-less repo.
+- id: hv-cse402-07
+  lab: cse-402
+  mac: "00:00:00:00:00:00"
+  chassis: "HP ProDesk 600 G6"
+  cpu: { model: "Core i5-10500", cores: 6, threads: 12, sockets: 1 }
+  memory: { measuredBytes: 17179869184 }
+  gpu:
+    - model: "NVIDIA GeForce GTX 1650"
+      vramMiB: 4096
+      computeCapability: "7.5"
+      class: consumer-discrete
+  disk: { internal: "512GB NVMe", layout: "windows-ntfs", policy: never-touch }
+  network: { speedMbps: 1000, wolCapable: true, switchPort: null }
+  firmware: { mode: UEFI, secureBoot: true, pxeCapable: null }
+  probeConfidence: representative
+  harvestEligible: null

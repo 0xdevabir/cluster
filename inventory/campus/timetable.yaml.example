@@ -1,0 +1,16 @@
+# TODO(phase-01B): real entries require an authoritative registrar export or a
+# photographed door schedule. This is a stub so `task validate:campus` passes
+# on a survey-less repo.
+- lab: cse-402
+  timezone: Asia/Dhaka
+  source: "registrar export 2026-09-01"
+  confidence: authoritative
+  weekly:
+    - { day: sun, from: "08:30", to: "17:00" }
+    - { day: mon, from: "08:30", to: "17:00" }
+    - { day: tue, from: "08:30", to: "13:00" }
+    - { day: wed, from: "08:30", to: "17:00" }
+    - { day: thu, from: "08:30", to: "15:30" }
+  blackouts:
+    - { from: "2026-12-10", to: "2026-12-24", reason: "final examinations" }
+  reserved_buffer_minutes: 30

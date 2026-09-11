@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/lab.json",
+  "title": "NEXUS CampusLab",
+  "description": "Phase 01B (Campus Fleet Survey & Harvest Inventory) — one entry per surveyed room. CAMPUS-FABRIC.md#8.1.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "building", "floor", "room", "owner", "machines", "timetable_ref", "uplink_ref", "power", "harvest_status"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "building": { "type": "string" },
+      "floor": { "type": "integer" },
+      "room": { "type": "string" },
+      "owner": {
+        "type": "object",
+        "required": ["name", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "contact_ref": { "type": "string" }
+        }
+      },
+      "machines": { "type": "integer", "minimum": 0 },
+      "timetable_ref": { "type": "string" },
+      "uplink_ref": { "type": "string" },
+      "power": {
+        "type": "object",
+        "required": ["circuits_observed", "ventilation", "ventilation_verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "circuits_observed": { "type": "integer", "minimum": 0 },
+          "measured_room_draw_w": { "type": ["number", "null"] },
+          "ventilation": { "type": "string" },
+          "ventilation_verdict": { "enum": ["adequate", "marginal", "inadequate"] }
+        }
+      },
+      "harvest_status": { "enum": ["surveyed", "agreed", "enrolled", "active", "withdrawn"] },
+      "notes": { "type": "string" }
+    }
+  }
+}

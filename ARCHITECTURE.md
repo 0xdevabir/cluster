@@ -4,12 +4,15 @@
 
 > Companion to `ULTIMATE-PLAN.md`. That document says *what and why*. This one says *how the pieces fit*.
 > Every implementation phase in `phases/` references a section here.
+>
+> **Scope note — two planes.** The eleven-layer stack below is the design of **Plane A (Core)**: dedicated racked nodes, RDMA fabric, distributed storage. **Plane B (Campus Harvest)** — several hundred borrowed DIU classroom and lab PCs on 1 GbE — shares L4, L5, L7 and L9–L10 with Plane A but substitutes its own L0–L3 and L6, and adds two components with no Plane A equivalent (the **Availability Oracle** and the **harvest eviction path**). Its design of record is **`CAMPUS-FABRIC.md`**; read that before implementing any `*B` phase. Where the two documents differ about a harvest node, `CAMPUS-FABRIC.md` wins.
 
 ---
 
 ## Table of Contents
 
 - [0. Architectural Overview](#0-architectural-overview)
+- **[Plane B — Campus Harvest Fabric](CAMPUS-FABRIC.md)** *(separate document; the layer deltas are summarized in §0.4 below)*
 - [L0 — Facility Layer](#l0--facility-layer)
 - [L1 — Hardware Layer](#l1--hardware-layer)
 - [L2 — Network Fabric](#l2--network-fabric)
@@ -89,6 +92,8 @@
 
 NEXUS separates concerns into three planes that fail independently (Law IX).
 
+> ⚠️ **Terminology.** "Plane" is used in two distinct senses in this project. Here it means the **management / control / data** separation of concerns. Elsewhere — "Plane A" and "Plane B" — it means the two **compute pools**: Core and Campus Harvest (§0.4). The two axes are orthogonal: both compute planes are governed by the same management and control planes.
+
 | Plane | Carries | Components | Failure behavior |
 |---|---|---|---|
 | **Management plane** | Provisioning, out-of-band, power | 1 GbE mgmt VLAN, Tinkerbell, PDUs, PiKVM, DHCP/TFTP | Loss ⇒ cannot provision new nodes; **running cluster unaffected** |
@@ -125,6 +130,31 @@ NEXUS separates concerns into three planes that fail independently (Law IX).
 ```
 
 The "pool" is not an illusion layer — it is a **matchmaking and wiring service**. Nothing pretends to be local that isn't.
+
+### 0.4 The Two Compute Planes — layer deltas for Campus Harvest
+
+Plane B reuses most of the stack and replaces the layers where the physics differ. Full design: **`CAMPUS-FABRIC.md`**.
+
+| Layer | Plane A — Core | Plane B — Campus Harvest | Owning phase |
+|---|---|---|---|
+| **L0 Facility** | Purpose-built room, 3-phase power, 21 t cooling, racks | **None of ours.** Existing classrooms; ventilation surveyed, not engineered; power caps instead of a load study | 01B, 19B |
+| **L1 Hardware** | Archetypes A–E, specified and purchased | **Archetype F**, surveyed not specified; heterogeneous by definition | 01B |
+| **L2 Network** | 25–100 GbE RoCEv2 leaf-spine, ours to saturate | Campus 1 GbE, **shared uplink modeled as a schedulable resource**, egress shaped below teaching traffic | 03B |
+| **L3 Provisioning/OS** | Tinkerbell → Talos installed to disk | **Diskless netboot Talos, RAM-only**; PXE-first with fall-through to Windows; WoL fleet control | 08B |
+| **L4 Substrate** | Shared — same cluster, same etcd, same Cilium | Shared, plus `nexus.io/harvest` taint and longer node-status intervals | 14B |
+| **L5 Resource Abstraction** | DRA, NUMA/topology, SR-IOV/RDMA | DRA per **GPU capability pool**; MPS/time-slicing; **VRAM admission control**; no SR-IOV, no RDMA | 19B |
+| **L6 Storage** | T0 NVMe → T1 Mayastor → T2 Ceph → T3 object → T4 cache | **T-local (tmpfs) → T-lab (cache seed) → T-core (object)**. No replicas, no OSDs, nothing durable on a borrowed machine | 25B |
+| **L7 Scheduling** | Kueue quota, gang, TAS, power-aware | **+ Availability Oracle** (deadline-aware admission on predicted free time) **+ preemption-first eviction** and tiered checkpointing | 14B, 31B |
+| **L8 Runtimes** | Ray, FSDP/DDP, MPI, Spark, vLLM | Ray under churn, sweeps, batch inference, ETL, single-node training, **same-lab Local-SGD only**. No DDP/FSDP, no MPI, no shuffle-heavy Spark | 36B |
+| **L9 Platform** | Shared — Backstage, Harbor, Keycloak, Argo CD | Shared, **plus per-lab Spegel P2P** so images cost O(1) per lab rather than O(N) | 25B |
+| **L10 Observability** | Shared — Prometheus/Mimir, Grafana, Loki | Shared, **plus harvest efficiency accounting**: every node-second classified useful/wasted/overhead/idle-unharvested | 33B |
+
+**Two components exist only on Plane B:**
+
+1. **Availability Oracle** (14B) — predicts per-node uninterrupted compute time from timetable, consent windows, reclaim history, and live occupancy; publishes confidence tiers as node labels. Turns scheduling from *"does this fit?"* into *"does this fit, and will it finish?"*
+2. **Harvest eviction path** (31B) — a three-stage yield that releases a borrowed machine to a detected human in under 10 seconds, checkpointing locally and flushing durably in the background. This is the mechanism behind Law XI.
+
+**The invariant that keeps the planes from poisoning each other:** state lives in the Core; work happens wherever it is cheapest. No harvest node is ever a storage replica, an etcd member, a rank in a gang-scheduled RDMA job, or the only copy of anything.
 
 ---
 

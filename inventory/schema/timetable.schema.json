@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexus.io/schema/timetable.json",
+  "title": "NEXUS CampusTimetable",
+  "description": "Phase 01B (Campus Fleet Survey & Harvest Inventory) — per-room weekly occupancy and blackouts. CAMPUS-FABRIC.md#8.1.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["lab", "timezone", "source", "confidence", "weekly", "reserved_buffer_minutes"],
+    "additionalProperties": false,
+    "properties": {
+      "lab": { "type": "string" },
+      "timezone": { "type": "string" },
+      "source": { "type": "string" },
+      "confidence": { "enum": ["authoritative", "observed", "assumed"] },
+      "weekly": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["day", "from", "to"],
+          "additionalProperties": false,
+          "properties": {
+            "day": { "enum": ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] },
+            "from": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "to": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+          }
+        }
+      },
+      "blackouts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["from", "to", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "from": { "type": "string", "format": "date" },
+            "to": { "type": "string", "format": "date" },
+            "reason": { "type": "string" }
+          }
+        }
+      },
+      "reserved_buffer_minutes": { "type": "integer", "minimum": 30 }
+    }
+  }
+}

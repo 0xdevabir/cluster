@@ -1,0 +1,21 @@
+# TODO(phase-01B): real entries require a completed field survey with written
+# authorization on file at docs/campus/survey-authorization.md (PREFLIGHT #2).
+# This is a stub example so `task validate:campus` passes on a survey-less repo.
+- id: cse-402
+  building: daffodil-tower
+  floor: 4
+  room: "402"
+  owner:
+    name: "<REPLACE-ME>"
+    role: "Lab in-charge, CSE"
+    contact_ref: "docs/campus/agreements/cse-402.md"
+  machines: 32
+  timetable_ref: cse-402
+  uplink_ref: cse-402
+  power:
+    circuits_observed: 2
+    measured_room_draw_w: null
+    ventilation: "ac-split-2x1.5ton"
+    ventilation_verdict: adequate
+  harvest_status: surveyed
+  notes: "Machines patched to two 24-port switches; second switch uplinks via the first."
