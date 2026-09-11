@@ -411,4 +411,4 @@ Documents and schemas only — `git revert`. **Physical electrical work cannot b
 
 ## ➡️ NEXT
 
-**[PHASE-03 — Network Fabric Design](PHASE-03.md)** — design the leaf-spine topology, IP/VLAN plan, BGP peering, and the RoCEv2 lossless contract. The rack layout you just finalized determines the switch port map.
+**[DONE_PHASE-03 — Network Fabric Design](DONE_PHASE-03.md)** ✅ — design the leaf-spine topology, IP/VLAN plan, BGP peering, and the RoCEv2 lossless contract. The rack layout you just finalized determines the switch port map.

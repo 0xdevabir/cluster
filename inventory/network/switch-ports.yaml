@@ -1,0 +1,64 @@
+apiVersion: nexus.io/v1
+kind: SwitchPortMap
+switches:
+  - name: r01-leaf-a
+    model: "NVIDIA SN2410"
+    role: leaf
+    rack: r01
+    asn: 65101
+    mgmtIp: 10.100.1.1
+    ports:
+      # Data-plane host ports (VLAN 200/300/400 trunked per node role, see
+      # docs/network/fabric-design.md). Naming matches the switchPort values
+      # already committed in inventory/nodes/*.yaml (ethN, not swpN).
+      - { port: eth1, peer: nx-c-r01-04, peerIf: enp2s0f0np0, speed: 100G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth2, peer: nx-c-r01-05, peerIf: enp2s0f0np0, speed: 100G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth3, peer: nx-c-r01-06, peerIf: enp2s0f0np0, speed: 100G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth4, peer: nx-c-r01-07, peerIf: enp2s0f0np0, speed: 100G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth5, peer: nx-s-r01-08, peerIf: enp1s0f0, speed: 25G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth6, peer: nx-m-r01-01, peerIf: enp1s0, speed: 25G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth7, peer: nx-m-r01-02, peerIf: enp1s0, speed: 25G, media: DAC-1m, type: host, status: cabled }
+      - { port: eth8, peer: nx-m-r01-03, peerIf: enp1s0, speed: 25G, media: DAC-1m, type: host, status: cabled }
+      # Uplinks reserved for the M3 spine tier (Task 2 staged topology) — not
+      # cabled yet, only 1 rack exists.
+      - { port: eth29, peer: null, peerIf: null, speed: 100G, media: null, type: uplink, status: reserved }
+      - { port: eth30, peer: null, peerIf: null, speed: 100G, media: null, type: uplink, status: reserved }
+      # MLAG peer-link to r01-leaf-b
+      - { port: eth31, peer: r01-leaf-b, peerIf: eth31, speed: 100G, media: DAC-1m, type: mlag-peer, status: cabled }
+      - { port: eth32, peer: r01-leaf-b, peerIf: eth32, speed: 100G, media: DAC-1m, type: mlag-peer, status: cabled }
+
+  - name: r01-leaf-b
+    model: "NVIDIA SN2410"
+    role: leaf
+    rack: r01
+    asn: 65101
+    mgmtIp: 10.100.1.2
+    ports:
+      # No hosts patched to leaf-b at M1 — every node is single-homed to
+      # leaf-a (Task 8: accepted single-NIC failure mode, nodes are cattle).
+      # leaf-b exists now for MLAG capacity/redundancy ahead of M2 dual-homing.
+      - { port: eth29, peer: null, peerIf: null, speed: 100G, media: null, type: uplink, status: reserved }
+      - { port: eth30, peer: null, peerIf: null, speed: 100G, media: null, type: uplink, status: reserved }
+      - { port: eth31, peer: r01-leaf-a, peerIf: eth31, speed: 100G, media: DAC-1m, type: mlag-peer, status: cabled }
+      - { port: eth32, peer: r01-leaf-a, peerIf: eth32, speed: 100G, media: DAC-1m, type: mlag-peer, status: cabled }
+
+  - name: r01-mgmt
+    model: "<REPLACE-ME — 48-port 1GbE>"
+    role: mgmt
+    rack: r01
+    mgmtIp: 10.100.1.3
+    ports:
+      - { port: eth1, peer: nx-m-r01-01, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth2, peer: nx-m-r01-02, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth3, peer: nx-m-r01-03, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth4, peer: nx-c-r01-04, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth5, peer: nx-c-r01-05, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth6, peer: nx-c-r01-06, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth7, peer: nx-c-r01-07, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth8, peer: nx-s-r01-08, peerIf: eno1, speed: 1G, media: Cat6, type: mgmt-host, status: cabled }
+      - { port: eth9, peer: r01-leaf-a, peerIf: mgmt0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }
+      - { port: eth10, peer: r01-leaf-b, peerIf: mgmt0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }
+      - { port: eth11, peer: r01-pdu-a, peerIf: net0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }
+      - { port: eth12, peer: r01-pdu-b, peerIf: net0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }
+      - { port: eth13, peer: r01-pikvm, peerIf: eth0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }
+      - { port: eth14, peer: r01-kvm-matrix, peerIf: eth0, speed: 1G, media: Cat6, type: mgmt-infra, status: cabled }

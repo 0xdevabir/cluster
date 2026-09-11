@@ -13,12 +13,23 @@ tasks:
   # ─────────────────────────── validation ───────────────────────────
   validate:
     desc: Run every validation gate (this is what CI runs)
-    deps: [validate:inventory, validate:yaml, validate:markdown, validate:shell, validate:manifests]
+    deps: [validate:inventory, validate:campus, validate:network, validate:yaml, validate:markdown, validate:shell, validate:manifests]
 
   validate:inventory:
     desc: Validate all inventory YAML against JSON Schema
     cmds:
       - bash tools/validate-inventory.sh
+
+  validate:network:
+    desc: Validate network fabric design (Phase 03) — IP overlap, port mapping, MTU consistency
+    cmds:
+      - python3 tools/net-validate.py --check
+      - python3 tools/net-validate.py --check-ports
+
+  validate:campus:
+    desc: Validate campus harvest survey inventory (Phase 01B) against JSON Schema and cross-references
+    cmds:
+      - bash tools/campus/validate-campus.sh
 
   validate:yaml:
     desc: Lint all YAML
@@ -76,6 +87,16 @@ tasks:
     desc: Aggregate fleet totals (cores, VRAM, storage, power)
     cmds:
       - bash tools/inventory-stats.sh
+
+  campus:stats:
+    desc: Roll up campus harvest survey data into the capacity table (Phase 01B)
+    cmds:
+      - bash tools/campus/survey-stats.sh
+
+  network:cable-list:
+    desc: Generate the physical cable run list from the switch port map (Phase 03)
+    cmds:
+      - python3 tools/gen-cable-list.py
 
   # ─────────────── namespaces reserved for later phases ───────────────
   # talos:*      (phase 09)    cluster:*   (phase 12)

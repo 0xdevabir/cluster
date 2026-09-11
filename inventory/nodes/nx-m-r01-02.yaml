@@ -30,6 +30,7 @@ spec:
       role: cluster
       numaAffinity: 0
       rdma: { capable: true, protocol: RoCEv2, device: mlx5_0 }
+      switchPort: "r01-leaf-a:eth7"
     - name: eno1
       macAddress: "aa:00:01:00:00:04"
       speedGbps: 1

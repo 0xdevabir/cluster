@@ -188,7 +188,7 @@ Phases are grouped into stages. **A stage's exit gate must pass before the next 
 | **00** | [Repository Foundation & Toolchain](DONE_PHASE-00.md) ✅ | Create the repo skeleton, dev tooling, linting, CI scaffold, and the conventions every later phase relies on | 2–3 h | — |
 | **01** | [Hardware Inventory & Capability Model](DONE_PHASE-01.md) ✅ | Build the machine-readable source of truth for every physical machine, including PCIe/NUMA topology and GPU capability flags | 3–4 h | 00 |
 | **02** | [Facility, Power & Thermal Design](DONE_PHASE-02.md) ✅ | Electrical load study, cooling plan, rack layout, PDU/KVM strategy — the plan that keeps breakers closed | 3–4 h | 01 |
-| **03** | [Network Fabric Design](PHASE-03.md) | Leaf-spine topology, IP/VLAN plan, BGP design, RoCE lossless configuration contract, switch port map | 4–5 h | 01, 02 |
+| **03** | [Network Fabric Design](DONE_PHASE-03.md) ✅ | Leaf-spine topology, IP/VLAN plan, BGP design, RoCE lossless configuration contract, switch port map | 4–5 h | 01, 02 |
 | **04** | [Security Architecture & Threat Model](PHASE-04.md) | Trust zones, PKI hierarchy, identity model, policy baseline, the audited privileged-workload list | 3 h | 00 |
 | **05** | [Capacity Model & Stage-0 Gate](PHASE-05.md) | Sizing math for compute/storage/network/power; validate G0 + G1; produce the buy list | 3 h | 01–04 |
 
@@ -419,4 +419,4 @@ If any box is unchecked, the phase is **incomplete**. Report it as incomplete. A
 
 ---
 
-*Phases 00, 01, and 02 are complete (`DONE_PHASE-00.md`, `DONE_PHASE-01.md`, `DONE_PHASE-02.md`). Begin with [PHASE-01B.md](PHASE-01B.md) for the Beachhead path (currently blocked on survey authorization — see `evidence/phase-01B/BLOCKED.md`), or [PHASE-03.md](PHASE-03.md) for the Core track.*
+*Phases 00, 01, 02, and 03 are complete (`DONE_PHASE-00.md`, `DONE_PHASE-01.md`, `DONE_PHASE-02.md`, `DONE_PHASE-03.md`). Begin with [PHASE-01B.md](PHASE-01B.md) for the Beachhead path (currently blocked on survey authorization — see `evidence/phase-01B/BLOCKED.md`), or [PHASE-04.md](PHASE-04.md) for the Core track.*

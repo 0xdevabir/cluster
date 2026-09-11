@@ -1,0 +1,41 @@
+apiVersion: nexus.io/v1
+kind: VlanMap
+vlans:
+  - id: 100
+    name: management
+    cidr: 10.100.0.0/22
+    mtu: 1500
+    purpose: "PXE, PDU, PiKVM, switch mgmt — N6: 1500 for PXE ROM compatibility"
+    routable: true
+    tenantAccessible: false
+  - id: 200
+    name: cluster
+    cidr: 10.200.0.0/20
+    mtu: 9000
+    purpose: "Kubernetes node network, one /26 per rack"
+    routable: true
+    tenantAccessible: false
+  - id: 300
+    name: storage
+    cidr: 10.210.0.0/22
+    mtu: 9000
+    purpose: "Ceph public network"
+    routable: true
+    tenantAccessible: false
+  - id: 301
+    name: storage-cluster
+    cidr: 10.211.0.0/22
+    mtu: 9000
+    purpose: "Ceph replication/backfill — QoS-throttled, R-18"
+    routable: true
+    tenantAccessible: false
+  - id: 400
+    name: rdma
+    cidr: 10.220.0.0/20
+    mtu: 9000
+    purpose: "RoCEv2 — SR-IOV VFs, one /24 per rack"
+    routable: true
+    tenantAccessible: false
+    lossless: true
+    dscp: 26
+    pcp: 3

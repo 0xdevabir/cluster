@@ -1,0 +1,82 @@
+apiVersion: nexus.io/v1
+kind: IpPlan
+metadata: { cluster: nexus-prod, site: hq }
+spec:
+  # Underlay: physical, routed, per-rack. Only r01 exists physically (M1) — see
+  # docs/network/fabric-design.md for the M2-M4 projection; racks r02+ are not
+  # fabricated here, matching the same no-fabrication rule Phase 01/02 applied.
+  supernet: 10.0.0.0/8
+
+  networks:
+    management:
+      vlan: 100
+      cidr: 10.100.0.0/22
+      gateway: 10.100.0.1
+      mtu: 1500
+      dhcp: { enabled: true, range: ["10.100.2.1", "10.100.3.254"] }
+      reservations:
+        - { name: seed-node, ip: 10.100.0.10 }
+        - { name: r01-leaf-a, ip: 10.100.1.1 }
+        - { name: r01-leaf-b, ip: 10.100.1.2 }
+        - { name: r01-mgmt, ip: 10.100.1.3 }
+        - { name: r01-pdu-a, ip: 10.100.1.11 }
+        - { name: r01-pdu-b, ip: 10.100.1.12 }
+        - { name: r01-pikvm, ip: 10.100.1.21 }
+        - { name: r01-kvm-matrix, ip: 10.100.1.22 }
+        # node static mgmt IPs: 10.100.0.100 + node_index (node_index = last 2
+        # digits of the node name, e.g. nx-m-r01-01 -> .101, nx-s-r01-08 -> .108)
+
+    cluster:
+      vlan: 200
+      cidr: 10.200.0.0/20
+      mtu: 9000
+      perRack:
+        r01: 10.200.1.0/26
+      reservations:
+        - { name: k8s-api-vip, ip: 10.200.0.10 }
+
+    storage:
+      vlan: 300
+      cidr: 10.210.0.0/22
+      mtu: 9000
+
+    storageCluster:
+      vlan: 301
+      cidr: 10.211.0.0/22
+      mtu: 9000
+
+    rdma:
+      vlan: 400
+      cidr: 10.220.0.0/20
+      mtu: 9000
+      perRack:
+        r01: 10.220.1.0/24
+      dscp: 26
+      pcp: 3
+      lossless: true
+
+  kubernetes:
+    podCidr: 10.244.0.0/14
+    podCidrPerNode: /24
+    serviceCidr: 10.96.0.0/16
+    loadBalancerPool: 10.10.0.0/24
+    clusterDns: 10.96.0.10
+
+  bgp:
+    spineAsn: 65000
+    leafAsnBase: 65100 # r01 leaves = 65101
+    hostAsnBase: 65200 # r01 hosts = 65201
+    unnumbered: true
+    ecmpMaxPaths: 8
+    gracefulRestart: true
+    bfd: { enabled: true, intervalMs: 300, multiplier: 3 }
+
+  # Facility uplink is not yet known — Phase 02's electrician-signoff.md and
+  # contractor-brief.md are still open (docs/facility survey pending). Do not
+  # fabricate a gateway/DNS/NTP; fill these in once the facility survey and
+  # ISP/campus-network handoff are confirmed (see deviations.md D1).
+  upstream:
+    gateway: "<REPLACE-ME>"
+    dns: ["<REPLACE-ME>", "<REPLACE-ME>"]
+    ntp: ["<REPLACE-ME>"]
+    natEgress: true
